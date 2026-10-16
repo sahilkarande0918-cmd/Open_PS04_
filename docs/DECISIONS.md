@@ -139,3 +139,10 @@ Use official Instagram Login for professional accounts, backend-only encrypted t
 
 ## D-034 — Shared signed media URLs across processes
 Publishing worker and API cannot use unrelated random signing keys. Derive a domain-separated HMAC key from backend secret configuration; six-hour expiry and kind/resource binding remain. Rotation invalidates links. Unit checks pass; restart API and worker together before live ingestion. This narrowly necessary fix supersedes the original per-process-signing choice.
+
+## D-035 — Delivery order for the hackathon: Instagram only, YouTube postponed
+The owner reprioritised on 2026-10-17: Mode B MP4 → UI redesign → multitrack editor → Instagram publishing and
+scheduling → Instagram analytics and AI feedback → end-to-end testing and submission. YouTube (OAuth, Data/Analytics
+API, Shorts) is postponed until explicitly requested; existing YouTube configuration names stay but no YouTube code is
+added. Billing, complex admin and non-essential optimisation are postponed. The PS and master prompt are unchanged.
+

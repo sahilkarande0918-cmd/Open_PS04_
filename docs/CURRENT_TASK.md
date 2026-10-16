@@ -1,3 +1,16 @@
+> **Owner priorities from 2026-10-17 (Claude resume after the Codex handoff), superseding earlier priority notes:**
+> 1. Phase 05: Topic → Video produces a real downloadable ~45 s MP4 (JSON vs XML).
+> 2. UI: finish the professional redesign (reference screenshots are for structure only, not colours or theme).
+> 3. Phase 06: functional multitrack editor (trim, split, captions, audio, overlays, preview, undo/redo, autosave, re-render).
+> 4. Phase 07: Instagram Business connection, Reel publishing, scheduling and queue.
+> 5. Phase 08: real Instagram analytics and AI performance feedback.
+> 6. Phase 09: end-to-end testing, fixes and submission.
+>
+> **YouTube is postponed** (no OAuth, API setup, Shorts publishing or analytics) until the owner asks. Billing,
+> complex admin features and non-essential optimisation are postponed. ORIGINAL_PS.md and MASTER_PROMPT.md are
+> unchanged; this is a delivery-order decision (D-035). Keep moving without approval for routine work; ask only
+> for account access, credentials, real publishing or other external actions.
+
 > **Final checkpoint (2026-10-17):** Read [CODEX_TO_CLAUDE_HANDOFF.md](CODEX_TO_CLAUDE_HANDOFF.md) first. It supersedes historical status below. Mode B pipeline/UI implemented but live generation fails on fenced model JSON; full editor and YouTube unfinished. Instagram reaches Reel Studio-IG but awaits the separate Business-account login/consent. Never connect/convert the personal account or publish without explicit approval. Production deployed at 7419b77; two new migrations applied. Final backend: 76 pass, 6 skip, 1 known xfail; DB: 52 pass; final frontend build passes. Owner requested checkpoint only, no more features.
 # Current task
 

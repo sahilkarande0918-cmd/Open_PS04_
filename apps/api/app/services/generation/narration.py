@@ -36,27 +36,61 @@ def align_words(script: str, measured: list[dict], duration_s: float) -> list[di
     expected = script.split()
     normalize = lambda word: re.sub(r"[^\w]", "", word).casefold()  # noqa: E731
     detected = [w for w in measured if str(w.get("raw_text", "")).strip()]
+    if not expected or not detected:
+        raise ValueError("Could not align narration: no measured words")
+    for w in detected:
+        s, e = float(w["start_s"]), float(w["end_s"])
+        if not math.isfinite(s + e) or s < 0 or e <= s or e > duration_s + .05:
+            raise ValueError("Invalid measured speech alignment times")
     matcher = SequenceMatcher(None, [normalize(w) for w in expected],
                               [normalize(w["raw_text"]) for w in detected], autojunk=False)
-    result = []
+    # (text, start, end) with None times for script words the recogniser missed
+    spans: list[list] = []
+    measured_words = 0
     for tag, a, b, c, d in matcher.get_opcodes():
-        if tag in {"delete", "insert"} or not detected:
-            raise ValueError("Could not align narration to measured speech; rerun transcription")
-        if b - a == d - c:
-            groups = [(expected[a + k], detected[c + k:c + k + 1]) for k in range(b - a)]
-        elif b - a == 1 and d > c:
-            groups = [(expected[a], detected[c:d])]
-        else:
-            raise ValueError("Could not align all script words to measured speech")
-        for text, group in groups:
-            start, end = float(group[0]["start_s"]), float(group[-1]["end_s"])
-            if (not math.isfinite(start + end) or start < 0 or end <= start or
-                    end > duration_s + .05 or (result and start < result[-1]["end"] - .02)):
-                raise ValueError("Invalid measured speech alignment times")
-            result.append({"text": text, "start": round(start, 3),
-                           "end": round(min(end, duration_s), 3), "isCode": is_code(text)})
-    if not result:
-        raise ValueError("Could not align narration: no measured words")
+        if tag == "insert":
+            continue  # extra recognised words (e.g. a stray "forward") are not in the script: drop them
+        if tag == "delete":
+            spans += [[expected[k], None, None] for k in range(a, b)]
+            continue
+        if b - a == d - c:  # equal, or one-for-one corrections such as "jaison" -> JSON
+            spans += [[expected[a + k], float(detected[c + k]["start_s"]), float(detected[c + k]["end_s"])]
+                      for k in range(b - a)]
+        else:  # e.g. XML heard as "X M L": share the measured span by written length
+            lo, hi = float(detected[c]["start_s"]), float(detected[d - 1]["end_s"])
+            weights = [len(expected[k]) + 1 for k in range(a, b)]
+            t = lo
+            for k, wgt in zip(range(a, b), weights, strict=True):
+                step = (hi - lo) * wgt / sum(weights)
+                spans.append([expected[k], t, t + step])
+                t += step
+        measured_words += b - a
+    # ponytail: a missed word takes the measured gap between its neighbours (bounded, never the whole
+    # scene); scenes where the recogniser lost >15 % of the script are rejected instead.
+    if measured_words / len(expected) < 0.85:
+        raise ValueError("Could not align narration to measured speech; too many words were not recognised")
+    i = 0
+    while i < len(spans):
+        if spans[i][1] is not None:
+            i += 1
+            continue
+        j = i
+        while j < len(spans) and spans[j][1] is None:
+            j += 1
+        lo = spans[i - 1][2] if i else 0.0
+        hi = spans[j][1] if j < len(spans) else duration_s
+        width = max(hi - lo, 0.05 * (j - i)) / (j - i)
+        for k in range(i, j):
+            spans[k][1], spans[k][2] = lo + width * (k - i), lo + width * (k - i + 1)
+        i = j
+    result, prev_end = [], 0.0
+    for text, start, end in spans:
+        start = max(start, prev_end - .02, 0.0)
+        end = min(max(end, start + .05), duration_s)
+        if end <= start:
+            raise ValueError("Invalid measured speech alignment times")
+        result.append({"text": text, "start": round(start, 3), "end": round(end, 3), "isCode": is_code(text)})
+        prev_end = end
     return result
 
 
