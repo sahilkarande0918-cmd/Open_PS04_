@@ -88,3 +88,19 @@ No free, licensed, downloadable Hinglish programming-class recording exists (Spo
 
 ## D-022 — Production backend URL discovery stays heartbeat-based
 Unchanged from D-004; the launcher (`app/serve.py`) supports Cloudflare (blocked on this network) and Tailscale Funnel (stable URL, needs owner setup).
+
+## D-023 — One timeline compiler, in Python
+*Alt:* a Node `packages/video-templates` compiler used by both the worker and the editor.
+*Why:* the worker that renders is Python, and the editor preview (Phase 06) can load the same compiled `index.html` from the backend, so there is one compiler and no Node-in-Python bridge. Zod (`packages/timeline-schema`) stays the single source of truth for the document shape; Python validates against the generated `timeline.schema.json` and re-checks the cross-field rules. Revisit if the editor needs to compile offline in the browser.
+
+## D-024 — Public backend tunnel: Microsoft Dev Tunnels (Tailscale and Cloudflare blocked here)
+*Measured 2026-10-16 on the owner's network:* Tailscale 1.104.1 is installed and its service runs, but the node is logged out, and its own health check reports Fortinet blocking. `controlplane.tailscale.com` is served with an untrusted (Fortinet) certificate and the DERP relays fail TLS, so login cannot complete; the "app not opening" is a symptom of that, not a broken install. Cloudflare's tunnel edge (`*.argotunnel.com:7844`) is reset. Pinggy (SSH over 443), localhost.run (22), bore and serveo are also blocked. ngrok is excluded at the owner's request.
+*Why Dev Tunnels:* free (Microsoft or GitHub login, no card), the host connects to `*.rel.tunnels.api.visualstudio.com` over 443 (works here), and a persistent named tunnel keeps one URL. Limits (Microsoft Learn): 5 GB/month bandwidth per user, 16 MB maximum request body, 20 MB/s, 1,500 requests/min per port. Upload chunks were cut to 8 MiB.
+*Security:* the relay allows anonymous connect (the browser cannot send a tunnel token), so the API's Supabase-JWT check and org-role checks remain the gate. Media uses signed URLs, and CORS is restricted to `ALLOWED_ORIGINS`.
+*Caveat:* this network also intercepts `*.devtunnels.ms`, so a browser *on the owner's network* cannot reach the tunnel. The frontend falls back to `http://127.0.0.1:8000` when the advertised URL fails, which works only on the machine running the backend. Verified from outside by the `backend-probe` workflow.
+
+## D-025 — Explicit table grants (security fix)
+Supabase's default privileges gave `authenticated` ALL on public tables, including TRUNCATE (not subject to RLS) and table-wide UPDATE, which made the column-level edit grants ineffective. Migration `20261016190000_explicit_grants.sql` revokes all of it and grants only what each table's policies intend; pgTAP asserts that truncate and score edits are refused. Every future table must state its grants explicitly.
+
+## D-026 — `render_jobs` doubles as the export asset
+One row per render: the timeline snapshot, its hash (render cache key), status and the verified output (path, size, duration, fps, thumbnail). A separate `export_assets` table waits until one render has several outputs (SRT/VTT, alternate qualities). Progress lives on the linked `jobs` row.

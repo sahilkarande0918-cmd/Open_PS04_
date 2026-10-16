@@ -96,5 +96,40 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | GPU ASR / OCR / LLM benchmarks | not re-run (results above still current) | — |
 | Frontend unit tests | ⬜ none exist yet | add Vitest with the timeline schema (Phase 04) |
 
+## Session 2 — infrastructure (2026-10-16)
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Supabase CLI link | ✅ linked to `adjwycjsxtxvjockxtan` (org `yqdlgjynocbxxsmzeesy`) | `supabase/.temp/project-ref`, `linked-project.json` |
+| Remote migrations | ⛔ **not applied** — remote column empty for all migrations; no public tables | `supabase migration list --linked`, `inspect db table-stats --linked` (0 rows), `db push --dry-run` lists all |
+| Remote `db push` by the assistant | ⛔ blocked by the session's permission classifier; owner runs it | — |
+| Remote auth settings / API keys | ⛔ publishable key from session 1 now returns `Invalid API key`; CLI key listing blocked | `GET /auth/v1/settings` 401 |
+| Production signup/login/logout E2E | ⬜ owner must run it (the assistant may not enter passwords or create accounts on a non-local site); needs migrations first | — |
+| Tailscale diagnosis | ⛔ network | service Running, CLI 1.104.1 OK, `BackendState: NeedsLogin`; health: "Network equipment from Fortinet may be blocking"; `controlplane.tailscale.com` → `SEC_E_UNTRUSTED_ROOT`; DERP TLS fails |
+| Other tunnels from this network | ⛔ | Cloudflare edge reset; pinggy SSH/443 no banner; localhost.run :22 timeout; bore/serveo fail |
+| Dev Tunnels host | ✅ | `devtunnel` 1.0.2115 (winget), GitHub login, tunnel `reel-studio.inc1`, `https://j96sqlp6-8000.inc1.devtunnels.ms` |
+| Tunnel reachable from the internet | ✅ 200 | check-host.net nodes DE/FR/TR/CA → `/health` 200 |
+| Tunnel probe from GitHub Actions (`backend-probe`) | ✅ all steps | run 38944354909: health + CORS for the Vercel origin; preflight OK; anonymous 401; **8 MiB PUT passes the relay** (API 401); `<video>`-style request gets API JSON 403 (no interstitial); navigation gets the interstitial (informational) |
+| Same-machine fallback | ✅ | local browser: tunnel `/health` status 0 (TLS intercepted) → `127.0.0.1:8000` 200, badge online |
+| Upload integration with 8 MiB chunks | ✅ 6/6 | `RS_INTEGRATION=1 pytest tests/test_upload_integration.py` |
+| Default table privileges | ❌→✅ fixed | `authenticated` had TRUNCATE/UPDATE on every table; after `20261016190000_explicit_grants.sql` only the intended grants remain (`information_schema.role_table_grants`) |
+| RLS pgTAP | ✅ 22/22 | `pnpm exec supabase test db` (adds render isolation, truncate refused, score edit refused) |
+| DB lint | ✅ | `supabase db lint --level warning` |
+
+## Phase 04 — first task (2026-10-16, local stack, synthetic lecture)
+| Test | Result | Evidence |
+|------|--------|----------|
+| Timeline schema (Zod) | ✅ 6/6 + tsc | `pnpm test` in `packages/timeline-schema` (defaults, JSON round trip, bad layout, item past end, unknown asset, path traversal, committed JSON Schema in sync) |
+| Python timeline + compiler unit tests | ✅ 14/14 (API total 43 passed, 6 skipped) | `pytest tests/test_rendering.py` |
+| Hyperframes lint of compiled composition | ✅ 0 errors (16 Studio-editing warnings) | `hyperframes lint --json` |
+| Render rank-1 highlight (14.66–61.19 s, manual keyframe) through the UI | ✅ | job `succeeded`, 155 s; ffprobe **1080×1920, 30 fps, H.264 + AAC 48 kHz, 46.533 s vs 46.53 s** |
+| Render rank-2 highlight (122.92–173.77 s) | ✅ | ffprobe 1080×1920 30 fps H.264+AAC, **50.867 s vs 50.85 s** |
+| Crop follows keyframes | ✅ | frames: 0.2 s panel (manual kf, crop_x 640, window y 363–1173), 4/10/16 s crop layout; 5 s panel, 25 s and 43.6 s crop |
+| Captions match corrected words | ✅ | frame 43.6 s: "To **AbortController** vaala pattern abhi zaroori ho" — AbortController in a code chip, highlighted while spoken |
+| Crash + retry | ✅ | worker tree killed at 23.6 % render → job stayed `running` → new worker requeued the stale lock after 3 min → attempt 2 succeeded (159 s) |
+| Render cache | ✅ | second Render on unchanged highlight → 202, no new row or job |
+| Playback / download / signing | ✅ | inline `<video>` 1080×1920 46.53 s plays; download 200 `video/mp4` 5,719,752 B; tampered signature 403 |
+| Select-before-render guard | ✅ | unselected highlight shows "Select this highlight to render it", button disabled; API 409 otherwise |
+| Known quality limits | ⚠️ | ASR errors pass into captions ("use fish" for useFetch); panel layout code is small (~17 px on 1080 wide); GSAP loaded from jsDelivr during render (needs network) |
+
 ## Unverified / untested
-Phases 03–09. Remote Supabase (migrations not applied), email confirmation and password-reset emails, public tunnel.
+Remote Supabase (migrations not applied yet), production auth E2E, email confirmation and password-reset emails, production ↔ backend with a real session. Phase 04 remainder (brand kits, intro/outro, SRT/VTT, timing check) and Phases 05–09.

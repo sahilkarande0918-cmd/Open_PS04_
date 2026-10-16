@@ -17,7 +17,7 @@
    │                 • Realtime (job progress)
    │                 • Storage (logos, thumbnails, selected final MP4s, signed URLs)
    │
-   └── HTTPS tunnel ─► Local machine (owner's laptop, RTX 5050 8 GB)
+   └── HTTPS tunnel ─► Local machine   (Microsoft Dev Tunnels, D-024) (owner's laptop, RTX 5050 8 GB)
                         apps/api  FastAPI  (JWT-verified, CORS-restricted)
                           • chunked upload → data/ (local disk)
                           • enqueue jobs (rows in Supabase `jobs`)
@@ -39,7 +39,7 @@ the UI shows a truthful "processing backend offline" state when the heartbeat is
 | `apps/web` | Next.js frontend (all 18 product pages) |
 | `apps/api` | FastAPI app + worker (`app/workers`) + services |
 | `packages/timeline-schema` | **Canonical timeline** — Zod schema, TS types, generated JSON Schema, migrations |
-| `packages/video-templates` | Timeline → Hyperframes HTML compiler; brand intro/outro, captions, code-animation blocks |
+| `apps/api/app/services/rendering` | Timeline → Hyperframes HTML compiler (D-023: Python, one compiler for render and preview) |
 | `supabase/migrations` | Version-controlled SQL + RLS |
 | `data/` (git-ignored) | Raw recordings, intermediates, renders, caches |
 
@@ -48,7 +48,7 @@ the UI shows a truthful "processing backend offline" state when the heartbeat is
 
 ## Data flow — Mode A (Recording → Reels)
 
-Steps 1–9 are **implemented** (session 1); 10–12 are Phase 04/06 work.
+Steps 1–10 and 12 are **implemented**; 11 (editor) is Phase 06.
 
 1. **Upload** ✅ `POST /recordings` → `PUT /recordings/{id}/chunk?offset=N` (16 MB, offset-checked resume) → `POST /recordings/{id}/complete`; file at `DATA_DIR/orgs/<org>/recordings/<id>/source.<ext>` (`app/api/recordings.py`, `app/core/storage.py`).
 2. **Validate** ✅ ffprobe on complete (video+audio, 5 s–4 h, ≤4 GB); invalid files deleted; metadata on `source_recordings`; `transcribe` job inserted (`app/services/media.py`).
@@ -59,15 +59,15 @@ Steps 1–9 are **implemented** (session 1); 10–12 are Phase 04/06 work.
 7. **Screen analysis** ✅ 2 fps grey change maps → change fraction, active box, text density, hard cuts (`screen_analysis/activity.py`); RapidOCR every 6 s + after cuts, ≤90 frames (`screen_analysis/ocr.py`).
 8. **Highlights** ✅ sentences → 30–60 s windows on sentence ends → features + labelled heuristic score → strict speaker-relative pause pool → local LLM judge (veto on agreement) → ranked `highlight_candidates` with reasons (`highlights/candidates.py`, `highlights/llm.py`, `workers/analyze.py`).
 9. **Reframe** ✅ per highlight: smoothed crop keyframes (crop / panel layouts, cuts, hysteresis) stored in `highlight_candidates.crop_keyframes` (`screen_analysis/reframe.py`). Studio preview plays the source through these keyframes (`components/studio/highlights.tsx`, `cropAt`).
-10. **Timeline** ⬜ build a canonical timeline from a selected highlight (video item + crop keyframes + caption track + brand snapshot).
+10. **Timeline** ✅ canonical timeline from a selected highlight: video item + crop keyframes + word caption track (code terms flagged) + brand snapshot, validated against `packages/timeline-schema` (`services/rendering/timeline.py`).
 11. **Edit** ⬜ editor on the canonical timeline; preview with `@hyperframes/player`.
-12. **Render** ⬜ compile timeline → Hyperframes project → `hyperframes render` → MP4 → ffprobe verify → thumbnail → export asset.
+12. **Render** ✅ `render` job: compile → `hyperframes lint` → `hyperframes render` (live `@hf-progress`) → ffprobe verify → thumbnail → `render_jobs` row; signed playback/download (`services/rendering/compose.py`, `workers/render.py`, `api/renders.py`).
 
 ### Worker jobs (implemented)
 `transcribe` (extract_audio → transcribe → correct_terms → save; then inserts `analyze`) and `analyze` (screen_activity → ocr → screen_terms → highlights → llm_judge → reframe). Claimed with `claim_next_job` (SKIP LOCKED), 30 s lock heartbeat, stale-lock requeue after 3 min, retries with backoff, `Permanent` errors fail fast, cancellation via `cancel_job` RPC checked between stages. Caches per recording: `audio16k.wav`, `activity.json`, `ocr.json`.
 
-### Tables (3 migrations)
-`profiles`, `organizations`, `organization_members`, `projects`, `jobs`, `job_events`, `backend_endpoints`, `audit_events` · `source_recordings`, `transcripts`, `transcript_segments`, `transcript_words`, `technical_glossaries` · `highlight_candidates`. RLS on all; membership helpers in `private` schema; column-level update grants for user edits.
+### Tables (5 migrations)
+`profiles`, `organizations`, `organization_members`, `projects`, `jobs`, `job_events`, `backend_endpoints`, `audit_events` · `source_recordings`, `transcripts`, `transcript_segments`, `transcript_words`, `technical_glossaries` · `highlight_candidates` · `render_jobs`. RLS on all; explicit grants only (D-025); membership helpers in `private` schema; column-level update grants for user edits.
 
 ## Data flow — Mode B (Topic → Video)
 
@@ -98,9 +98,14 @@ GPU concurrency = 1 heavy model at a time (transcribe / LLM / render are seriali
 
 ## Rendering pipeline
 
-`timeline.json` → `packages/video-templates` compiler (Node) → `index.html` + assets (symlinked media,
-brand fonts, logo) → `npx hyperframes check` → `npx hyperframes render --quality <draft|looks|delivery>`
-→ `ffprobe` duration/fps check → thumbnail via FFmpeg. Hyperframes telemetry is disabled.
+`timeline.json` → `services/rendering/compose.py` → `DATA_DIR/orgs/<org>/renders/<id>/` with `index.html`,
+`timeline.json`, bundled OFL fonts and a hard link to the source → `npx hyperframes@0.8.164 lint --json`
+→ `render --quality <draft|looks|delivery> --video-frame-format png` → `ffprobe` (1080×1920, duration ±0.1 s,
+H.264 + audio) → thumbnail via FFmpeg → `render_jobs` ready. Camera: `#cam` (source video, GSAP x/y/scale)
+inside `#win` (visible window; full frame for `crop`, a band above the captions for `panel`); linear
+between keyframes, jump on `cut` or layout change, identical to the studio preview's `cropAt`. Captions:
+pages of ≤2 lines × ≤26 chars broken at pauses/sentence ends, active word on an accent pill. Render cache
+key = SHA-256 of the timeline minus its id. Hyperframes telemetry is disabled.
 
 ## Publishing & analytics
 

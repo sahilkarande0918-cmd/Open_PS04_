@@ -69,3 +69,13 @@ Hyperframes (Apache-2.0) requires preserving its LICENSE/NOTICE if we redistribu
 | Windows OneCore voices (Microsoft Ravi/Heera, en-IN) | bundled with Windows | Test-fixture narration only; not shipped |
 
 Test audio: Oriserve model-repo sample clips (Common Voice, CC0) used for local spot checks; not committed.
+
+## Added in Phase 04
+| Project | Licence | Use |
+|---------|---------|-----|
+| zod 4 | MIT | Canonical timeline schema (`packages/timeline-schema`) |
+| vitest 5 | MIT | Schema tests |
+| jsonschema (Python) | MIT | Validates timelines against the generated JSON Schema |
+| Archivo (Omnibus-Type), JetBrains Mono (JetBrains) via @fontsource 5.3.0 | SIL OFL 1.1 | Caption fonts bundled into renders; licence texts in `apps/api/app/services/rendering/fonts/` |
+| GSAP 3.14.2 (CDN, inside compositions) | GreenSock standard licence (free, incl. commercial) | Composition timeline |
+| Microsoft Dev Tunnels CLI 1.0.2115 | Microsoft licence terms (free service) | Public HTTPS tunnel to the local backend; installed with winget, not redistributed |

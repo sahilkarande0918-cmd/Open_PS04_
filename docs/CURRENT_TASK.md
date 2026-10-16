@@ -1,68 +1,50 @@
 # Current task
 
-## Phase 04 — Captions, Branding and Hyperframes MP4 Rendering (next; not started)
+## Phase 04 — Captions, Branding and Hyperframes MP4 Rendering (in progress)
 
-**Objective:** take a *selected* highlight from Phase 03 and produce a real, professional, branded
-1080×1920 MP4 that plays the source clip through its crop keyframes, with word-synchronised captions
-(technical terms spelled correctly, code shown as formatted text) and the institute's brand.
+### Done (session 2, verified on the local stack)
+Selected highlight → canonical timeline (`packages/timeline-schema`) → Hyperframes composition → `render`
+job → ffprobe-verified 1080×1920 30 fps H.264/AAC MP4 + thumbnail → Export panel with live progress,
+inline player and signed download. Crop camera follows keyframes (the preview uses identical geometry).
+Word-by-word captions sit in the safe zone with code terms as monospace chips, and `AbortController` is
+shown correctly. A render survived a worker crash (attempt 2), and identical requests reuse the cached
+render. Evidence: `docs/TEST_STATUS.md` → "Phase 04 — first task".
 
-### First implementation task (do this first)
-**Render one selected highlight → MP4, end to end, without brand kits yet.**
-
-1. `packages/timeline-schema` (new pnpm package): Zod schema + TS types for the canonical timeline
-   (`Composition {id, schemaVersion: 1, fps, width: 1080, height: 1920, duration, tracks[], assets{}, brand, renderSettings}`;
-   `Track {id, kind: video|audio|caption|text|overlay, items[]}`; `VideoItem {assetId, start, duration, sourceStart, sourceEnd, cropKeyframes[]}`;
-   `CaptionItem {words[{text,start,end,isCode}] , style}`), plus `scripts/export-json-schema` writing
-   `timeline.schema.json` for Python. Add Vitest with serialization/validation tests.
-2. `apps/api/app/services/rendering/timeline.py`: build a canonical timeline from a `highlight_candidates`
-   row + its transcript words (corrected_text, times shifted by `start_s`; drop merged/blank words) +
-   `crop_keyframes`. Validate against `timeline.schema.json` (`jsonschema`).
-3. `packages/video-templates` (or `apps/api/app/services/rendering/compose.py` if a Node package is overkill —
-   decide with Ponytail): compile the timeline to a Hyperframes `index.html`:
-   - `<video>` of the source (`data-start=0`, trimmed to `sourceStart..sourceEnd` — see Hyperframes
-     `variables-and-media.md` for trimming/`data-has-audio`), positioned per keyframe with GSAP on the
-     **main** timeline (`crop` layout = full-height 9:16 window; `panel` layout = scaled to 1080 wide over a
-     blurred/dimmed copy of the frame); `cut` keyframes use `tl.set`, others tween.
-   - word-by-word captions in the lower safe zone (~y 1350–1650), current word highlighted, `isCode`
-     words in a monospace chip; line breaking ≤ 2 lines, ≤ ~32 chars/line.
-   - follow `hyperframes-core` rules: one paused timeline at `window.__timelines["main"]`, no CSS transform
-     + GSAP conflicts, `<audio>`/`<video>` with `id`, no `crossorigin`, `@font-face` for named fonts.
-4. Worker job `render` (`app/workers/render.py`): stage project dir under
-   `DATA_DIR/orgs/<org>/renders/<render_id>/` (copy or symlink the source), run
-   `npx --yes hyperframes@0.8.164 lint` then `render --quality looks --output out.mp4`
-   (env `HYPERFRAMES_TELEMETRY=0 DO_NOT_TRACK=1`), verify with ffprobe (1080×1920, duration ≈ clip
-   duration ± 0.1 s, audio present), make a thumbnail, store a `render_jobs`/`export_assets` row (new migration).
-5. API `POST /highlights/{id}/render`, `GET /renders/{id}/download-url` (HMAC-signed like media);
-   UI: "Render" button on a selected highlight, real progress, download link, inline `<video>` of the result.
-
-**Inputs available now:** local stack has recording `0ba5238f-0c10-49e7-86a3-83b5255f91d2`
-(project `10fb1100-8c9c-41ba-9f82-33f5ed4d0888`, user `upload-owner@test.local`) with a *selected*
-highlight (rank 1, 14.66–61.19 s, manual crop keyframe) and transcript `7c1574d7-e6ec-4db5-9d5d-97537e5b4883`.
-Source file under `DATA_DIR/orgs/7d612534-293d-492e-95d1-e87856829346/recordings/0ba5238f-…/source.mp4`.
-
-**Files to read first:** `apps/api/app/workers/analyze.py`, `app/services/screen_analysis/reframe.py`
-(keyframe shape), `apps/web/components/studio/highlights.tsx` (`cropAt` — preview must match render),
-`supabase/migrations/20261016160000_highlights.sql`, `tests/fixtures/lecture/screen.html` (a working
-Hyperframes composition with audio + GSAP clock), Hyperframes skill docs (`hyperframes-core`,
-`hyperframes-cli`, `embedded-captions`).
-
-**Acceptance for the first task:** an MP4 from the selected highlight exists, ffprobe shows
-1080×1920 30 fps H.264 + AAC with duration within 0.1 s of the clip; frames at 3 timestamps show the
-crop following the keyframes (incl. the manual one) and captions matching the corrected words at
-those times (`AbortController` spelled correctly); the job shows real progress and survives a retry.
+### Next task: brand kits
+1. Migration `brand_kits`:
+   - Columns: `id`, `organization_id`, `name`, `is_default`, `colors {background, text, accent}`, `fonts {body, code}`, `logo_path`, `handle`, `watermark` (bool + position), `caption_preset`, `intro {enabled, duration_s, title}`, `outro {enabled, duration_s, cta}`, timestamps.
+   - RLS: members read; editors write.
+   - **Explicit grants** (D-025): select/insert/update/delete only.
+   - At most one default per org (partial unique index).
+2. Logo upload:
+   - Small file (PNG/SVG/JPG ≤ 2 MB), stored on the backend disk under `DATA_DIR/orgs/<org>/brand/` through an API endpoint with role check and content sniffing. A Supabase Storage private bucket is the alternative (≤ 1 GB free); decide with Ponytail.
+   - Served via signed URL.
+3. Brand editor page `/brand` (sidebar entry):
+   - Colour pickers with a contrast check (reuse `brand_ink` logic in TS).
+   - Font choice from bundled OFL fonts only (no remote fonts in renders).
+   - Logo, handle, watermark, caption preset (2–3 real presets: highlight-word, karaoke underline, boxed), intro/outro toggles.
+   - Live 9:16 preview card.
+4. Snapshot into the timeline:
+   - `timeline.build` takes the org's default brand kit (or the one chosen in the Export panel) and copies it into `doc.brand` (snapshot, so later kit edits do not change old renders).
+   - Extend the Zod `Brand` (logo asset, handle, watermark, captionPreset, intro/outro) and run `pnpm build:schema`.
+5. Compiler:
+   - Logo watermark and handle overlay.
+   - Intro/outro as timed segments (or sub-compositions via `data-composition-src`) that extend the composition duration, with the video item offset by the intro length.
+   - Caption preset styles.
+   - Update `verify()` duration expectations.
+6. Tests:
+   - Vitest for the schema changes; pytest for brand snapshot + compiler output.
+   - pgTAP for `brand_kits` isolation and the single default.
+   - One real render with a logo + intro/outro, checked with ffprobe + frames.
 
 ### Then (rest of Phase 04)
-Brand kits (table + editor UI + snapshot per render: colours, fonts, logo, intro/outro, handle,
-watermark, caption style presets), intro/outro sub-compositions, SRT/VTT export, quality presets
-(draft/looks/delivery), render cache keyed by timeline hash (boundary edit → only re-render), timing
-consistency check (caption word times vs audio), thumbnails. Phase 04 acceptance in `docs/PHASES.md` / master prompt.
+- SRT/VTT export from the caption track.
+- Caption timing consistency check: word times vs audio energy onsets, report drift.
+- Vendor GSAP into the render project (offline renders).
+- Thumbnail choice.
+- Phase 04 acceptance per `docs/MASTER_PROMPT.md` Section 19.
 
 ## Parallel, blocked on the owner (keep visible)
-1. **Supabase production:** CLI cannot see the friend's org. Owner accepts the Developer invite for the
-   CLI account (or runs the 3 migration files in the Reel-Studio SQL Editor), sets Auth URL config,
-   disables "Confirm email" for the demo. Then: link `adjwycjsxtxvjockxtan`, `db push`, verify RLS and
-   signup → onboarding → project on https://reel-studio-taupe.vercel.app.
-2. **Public tunnel:** Cloudflare blocked (port 7844). Owner installs Tailscale, signs in, enables Funnel;
-   then `python -m app.serve --tunnel tailscale`, set `ALLOWED_ORIGINS` to include the Vercel domain,
-   verify upload/job status from production.
-3. Teammate `Atharva486dherange` has not accepted the GitHub invitation yet.
+1. `pnpm exec supabase db push --linked` (5 migrations incl. the grants security fix), then Auth URL config and the email-confirmation decision (DEPLOYMENT.md).
+2. Owner writes the Reel-Studio `SUPABASE_URL` + secret into `apps/api/.env`, restarts `python -m app.serve --tunnel devtunnel`, and runs the production E2E (signup, workspace, project, refresh, upload, second account cannot see data).
+3. Teammate `Atharva486dherange` has not accepted the GitHub invitation.

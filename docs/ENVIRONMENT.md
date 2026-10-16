@@ -15,10 +15,10 @@ Current local `apps/web/.env.local` points at the **local** Supabase stack.
 ## Backend (`apps/api/.env`, processing machine only)
 | Variable | Secret? | Notes |
 |----------|---------|-------|
-| `SUPABASE_URL` | no | local `http://127.0.0.1:54321` (current) |
+| `SUPABASE_URL` | no | local `http://127.0.0.1:54321` (current); production `https://adjwycjsxtxvjockxtan.supabase.co` after migrations |
 | `SUPABASE_SECRET_KEY` | **SECRET** | local stack's default key now; production secret only ever typed into this file |
 | `TOKEN_ENCRYPTION_KEY` | **SECRET** | needed from Phase 07 (OAuth tokens) |
-| `ALLOWED_ORIGINS` | no | `http://localhost:3000` now; add `https://reel-studio-taupe.vercel.app` for production |
+| `ALLOWED_ORIGINS` | no | `http://localhost:3000,https://reel-studio-taupe.vercel.app` (set 2026-10-16) |
 | `DATA_DIR` | no | `C:/Users/Sahil/AppData/Local/reel-studio/data` |
 | `PUBLIC_API_URL` | no | `http://127.0.0.1:8000` locally; overwritten by the tunnel launcher |
 | `WHISPER_MODEL` | no | `C:/Users/Sahil/AppData/Local/reel-studio/data/models/hinglish-apex-ct2` |
@@ -33,10 +33,11 @@ Current local `apps/web/.env.local` points at the **local** Supabase stack.
 ## Machine (verified 2026-10-16)
 - Windows 11, NVIDIA RTX 5050 Laptop 8 GB (Blackwell sm_120, driver 616.64), CUDA 12.8 toolkit.
 - Node 24.13.1, pnpm 12.5.1, Python 3.11.9 (backend venv), FFmpeg/FFprobe 8.1.2, Docker 29.6.2.
-- Ollama with `qwen2.5vl:7b`. `cloudflared` 2026.10.1 installed (winget). Tailscale **not installed**.
+- Ollama with `qwen2.5vl:7b`. `cloudflared` 2026.10.1 (winget). Tailscale 1.104.1 installed, service running, logged out (cannot log in on this network, D-024). **Microsoft Dev Tunnels CLI 1.0.2115** (winget; `%LOCALAPPDATA%\Microsoft\WinGet\Packages\Microsoft.devtunnel_*\devtunnel.exe`), logged in with GitHub `sahilkarande0918-cmd`, tunnel `reel-studio.inc1`.
 - Python venv `C:\Users\Sahil\AppData\Local\reel-studio\venv`: fastapi, uvicorn, supabase, faster-whisper 1.2.1, ctranslate2 4.8.3, nvidia-cublas/cudnn cu12 wheels, opencv-python-headless 4.14, scenedetect 0.6.7, rapidocr-onnxruntime 1.4.4, kokoro-onnx 0.6.1, soundfile, pytest, ruff.
 - Converter venv `C:\Users\Sahil\AppData\Local\reel-studio\convert-venv` (torch CPU, transformers, ctranslate2) — only for re-converting the ASR model.
 - Models: `data/models/hinglish-apex-ct2` (1.6 GB fp16), `data/models/models--Systran--faster-whisper-base`; HF cache holds the original Oriserve weights; Kokoro voices downloaded by Hyperframes.
 - Hyperframes CLI used via `npx --yes hyperframes@0.8.164` (set `HYPERFRAMES_PYTHON` to the venv python for `tts`; set `HYPERFRAMES_TELEMETRY=0 DO_NOT_TRACK=1`).
 - Windows OneCore voices present: Microsoft Ravi / Heera (en-IN), David, Mark, Zira.
-- Network: outbound TCP/UDP 7844 blocked (Cloudflare tunnel fails); port 22 blocked; 443 open.
+- Network: Fortinet firewall with SSL inspection. Outbound TCP/UDP 7844 blocked (Cloudflare tunnel fails); port 22 blocked; 443 open, but `controlplane.tailscale.com`, Tailscale DERP and `*.devtunnels.ms` are TLS-intercepted with an untrusted CA. The Dev Tunnels relay (`*.rel.tunnels.api.visualstudio.com`) works.
+- Python venv also has `jsonschema` 4.26 (Phase 04). Node workspace package `packages/timeline-schema` (zod 4, vitest 5).

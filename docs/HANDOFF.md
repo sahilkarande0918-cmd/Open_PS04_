@@ -1,7 +1,7 @@
 # Handoff — Reel Studio
 
-_Written at the end of session 1 (2026-10-16) as a pre-compaction checkpoint. Read with `CLAUDE.md`
-(mandatory reading order). Everything here was verified in this session unless marked otherwise._
+_Session 1 checkpoint (2026-10-16), updated in session 2 (Phase 04 first task, Dev Tunnels, grants fix).
+Read with `CLAUDE.md` (mandatory reading order). Everything here was verified unless marked otherwise._
 
 ## 1. Project identity and objective
 Reel Studio — "the AI video studio built for technical educators". Hackathon PS4, 24-hour national
@@ -26,22 +26,22 @@ human commits only (operator identity `sahilkarande0918-cmd <sahilkarande0918@gm
 
 ## 4. Architecture and stack
 Next.js 16 on Vercel ↔ Supabase (Auth, Postgres+RLS, Realtime) ↔ local FastAPI + worker on the owner's
-RTX 5050 laptop, reached through a free tunnel whose URL is heartbeated into `backend_endpoints`.
-Details: `docs/ARCHITECTURE.md`. Decisions D-001…D-022: `docs/DECISIONS.md`.
+RTX 5050 laptop, reached through Microsoft Dev Tunnels (stable URL, heartbeated into `backend_endpoints`).
+Details: `docs/ARCHITECTURE.md`. Decisions D-001…D-026: `docs/DECISIONS.md`.
 
 ## 5. Phase status and verification level
 | Phase | Status | Verification |
 |-------|--------|--------------|
 | 00 Foundation | ✅ | repo, docs, Ponytail + Hallmark + Taste Skill, labels, 10 milestones; invitations: sahillokhande5841-cmyk ✅ accepted, SK999CodingWorld ✅ accepted, Atharva486dherange ⏳ pending |
-| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (auth, workspaces, projects, RLS 16/16, backend discovery). Production: pages 200 / protected 307, but remote DB has **no migrations** and **no public tunnel** |
+| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (RLS now 22/22). Production: pages 200 / protected 307; CLI linked to `adjwycjsxtxvjockxtan` but **5 migrations still unapplied** (owner `db push`); public tunnel ✅ (Dev Tunnels, verified from outside) |
 | 02 Ingestion + transcription | 🟡 synthetic-verified | all acceptance steps pass on the generated lecture; real classroom validation not done |
 | 03 Highlights + reframing | 🟡 synthetic-verified | OCR correction, highlights, reframing, UI pass on fixtures; diagram/slide footage not covered |
-| 04 Captions/branding/render | ⬜ next | — |
+| 04 Captions/branding/render | 🟡 | first task ✅: selected highlight → 1080×1920 H.264/AAC MP4 with crop camera + word captions (two highlights rendered, crash-retry, cache, signed download). Brand kits next |
 | 05–09 | ⬜ | topic-to-video, advanced editor, IG/YT publishing+scheduler, analytics+feedback+SaaS, final QA/submission |
 
 ## 6. Current exact task
-`docs/CURRENT_TASK.md` → Phase 04 first task: render one selected highlight to a 1080×1920 MP4 via the
-canonical timeline + Hyperframes, with crop keyframes and word-synced captions.
+`docs/CURRENT_TASK.md` → Phase 04 second task: brand kits (table, editor, snapshot into the timeline) +
+intro/outro sub-compositions + caption style presets, then SRT/VTT and the timing check.
 
 ## 7. Source directories and entry points
 | Path | What |
@@ -51,13 +51,18 @@ canonical timeline + Hyperframes, with crop keyframes and word-synced captions.
 | `apps/web/app/onboarding/*` | workspace creation (`create_organization` RPC), workspace switch cookie `rs_org` |
 | `apps/web/app/(app)/layout.tsx`, `components/app/*` | app shell, sidebar (Dashboard, Projects, Glossary), backend badge |
 | `apps/web/app/(app)/projects/[id]/page.tsx` → `components/studio/recording-studio.tsx` | studio: uploader, job progress, highlights, transcript |
-| `apps/web/components/studio/{uploader,job-progress,transcript-view,highlights}.tsx` | chunked upload w/ resume; Realtime progress, cancel/retry; synced transcript editor; highlights + 9:16 preview + crop override |
-| `apps/web/lib/{backend,realtime,media}.ts`, `lib/supabase/{client,server}.ts` | backend discovery + `apiFetch`, Realtime jobs hook, signed media URL hook, Supabase clients (`requireUser`, `requireOrg`) |
-| `apps/api/app/main.py` | FastAPI app (`/health`, `/me`, `/recordings/*`) + heartbeat lifespan |
-| `apps/api/app/serve.py` | **launcher**: tunnel (cloudflare/tailscale/none) + API + worker |
+| `apps/web/components/studio/{uploader,job-progress,transcript-view,highlights,renders}.tsx` | chunked upload (8 MiB) w/ resume; Realtime progress, cancel/retry; synced transcript editor; highlights + 9:16 preview (same geometry as the renderer) + crop override; Export panel (render, progress, player, download) |
+| `apps/web/lib/{backend,realtime,media}.ts` (backend: tunnel header + `127.0.0.1:8000` fallback), `lib/supabase/{client,server}.ts` | backend discovery + `apiFetch`, Realtime jobs hook, signed media URL hook, Supabase clients (`requireUser`, `requireOrg`) |
+| `apps/api/app/main.py` | FastAPI app (`/health`, `/me`, `/recordings/*`, `/highlights/{id}/render`, `/renders/*`) + heartbeat lifespan |
+| `apps/api/app/serve.py` | **launcher**: tunnel (`devtunnel` ← use this; cloudflare/tailscale/none) + API + worker |
+| `apps/api/app/api/renders.py`, `app/core/signing.py` | render request (cache by timeline hash), signed playback/download URLs; shared HMAC signing |
+| `apps/api/app/services/rendering/{timeline,compose}.py` + `fonts/` | canonical timeline builder/validator; Hyperframes compiler; bundled OFL fonts |
+| `apps/api/app/workers/render.py` | render job: lint → render (live progress) → ffprobe verify → thumbnail |
+| `packages/timeline-schema` | Zod canonical timeline, generated `timeline.schema.json`, Vitest |
+| `.github/workflows/backend-probe.yml` | manual external probe of the tunnel (CORS, auth, 8 MiB body, interstitial) |
 | `apps/api/app/api/recordings.py` | create/chunk/complete/status, `/transcribe`, `/analyze`, `/media-url`, `/media` |
 | `apps/api/app/core/{auth,access,config,db,storage,heartbeat}.py` | Supabase-verified bearer auth, org-role checks (404 on foreign), settings, service client, UUID-only paths, URL heartbeat |
-| `apps/api/app/workers/{run,jobs,transcribe,analyze}.py` | durable worker loop + job handlers |
+| `apps/api/app/workers/{run,jobs,transcribe,analyze,render}.py` | durable worker loop + job handlers |
 | `apps/api/app/services/media.py` | ffprobe validation, audio extraction |
 | `apps/api/app/services/transcription/{whisper,glossary,cleanup}.py` | ASR, term correction (dictionary/org/screen evidence), loop cleanup |
 | `apps/api/app/services/screen_analysis/{activity,ocr,reframe}.py` | change maps, RapidOCR + identifiers, crop keyframes |
@@ -74,14 +79,18 @@ inserts `analyze` job → worker samples screen activity, OCRs frames, applies s
 scores windows, asks the local LLM, plans crop keyframes, writes `highlight_candidates` → web reads
 everything via Supabase (RLS) with Realtime invalidation; media plays from the API via HMAC-signed URLs;
 user edits (words, highlight status/bounds/crop) go straight to Supabase via column-level grants.
+Render: Export panel → `POST /highlights/{id}/render` builds + validates the timeline (or returns a cached
+identical render) → `render_jobs` row + `render` job → worker compiles `index.html`, runs Hyperframes,
+verifies with ffprobe → row `ready` → panel fetches signed URLs for the inline player and download.
 
 ## 9. Database
 Migrations (applied to the **local** stack only):
 `20261016120000_identity_orgs_jobs.sql`, `20261016140000_recordings_transcripts.sql`,
-`20261016160000_highlights.sql`. Remote `adjwycjsxtxvjockxtan`: **none applied**.
+`20261016160000_highlights.sql`, `20261016180000_render_jobs.sql`, `20261016190000_explicit_grants.sql`
+(security fix D-025: revokes default ALL/TRUNCATE). Remote `adjwycjsxtxvjockxtan`: linked, **none applied**.
 Key RPCs: `create_organization`, `claim_next_job` (service role only), `requeue_stale_jobs` (service),
-`cancel_job` (editors). Realtime publication: `jobs`, `source_recordings`, `highlight_candidates`.
-Not yet created: brand kits, timelines/revisions, render jobs/export assets, social accounts, publish
+`cancel_job` (editors). Realtime publication: `jobs`, `source_recordings`, `highlight_candidates`, `render_jobs`.
+Not yet created: brand kits, timelines/revisions, export_assets (folded into render_jobs, D-026), social accounts, publish
 jobs, metrics, feedback, plans/subscriptions/usage.
 
 ## 10. Local environment and paths
@@ -95,7 +104,9 @@ Full tool list: `docs/ENVIRONMENT.md`.
 - LLM: Ollama `qwen2.5vl:7b` (check `curl localhost:11434/api/tags`; `ollama list` hangs).
 - OCR: RapidOCR (pip). TTS: `HYPERFRAMES_PYTHON=<venv python> npx --yes hyperframes@0.8.164 tts "<text>" --voice hm_omega --lang hi -o out.wav`.
 - Start everything locally: Docker Desktop → `pnpm exec supabase start -x vector,logflare,imgproxy,edge-runtime`
-  → `cd apps/api && <venv>/python -m app.serve --tunnel none` → `pnpm dev` (root) → http://localhost:3000.
+  → `cd apps/api && <venv>/python -m app.serve --tunnel devtunnel` (or `--tunnel none`) → `pnpm dev` (root) → http://localhost:3000.
+- Render by hand: `timeline.build` + `compose.write_project`, then `HYPERFRAMES_TELEMETRY=0 npx --yes hyperframes@0.8.164 render --quality looks --video-frame-format png -o out.mp4 .`
+- Tunnel: `devtunnel` (winget, GitHub login done); external check `gh workflow run backend-probe.yml -f url=https://j96sqlp6-8000.inc1.devtunnels.ms`.
 
 ## 12. Local test fixtures (synthetic, git-ignored)
 `data/test-recordings/react-hooks-hinglish.mp4` (192.5 s, 5.9 MB), `react-hooks-hinglish-hq.mp4` (52 MB
@@ -116,6 +127,9 @@ Local test users (local stack only, password in fixtures/tests): `asha@nimbu.tes
 - Highlights: 2/2 clips start and end on the fixture's real topic boundaries.
 - Reframing: hard cuts at 26.0 s and 31.5 s = true window-switch times on the focus fixture.
 - Upload resume through UI, cancel, retry and worker-crash recovery all verified.
+- Session 2: pytest 43 passed / 6 skipped; schema Vitest 6/6; pgTAP 22/22; integration 6/6 (8 MiB chunks); web build ✅.
+- Render: 46.53 s clip → 46.533 s MP4 in 155 s (first manual render 210 s); 50.85 s clip → 50.867 s in 159 s; `--quality looks`, png frame extraction, GPU drawelement capture.
+- Captions show `AbortController` correctly as a code chip at the moment it is spoken.
 
 ## 14. Known bugs and limitations
 - Real-world Hinglish classroom validation not done (no free licensed recording).
@@ -127,23 +141,29 @@ Local test users (local stack only, password in fixtures/tests): `asha@nimbu.tes
 - No pitch/prosody features yet; PySceneDetect installed but unused (cuts from change map).
 - Reframing not validated on diagrams/slides footage; no picture-in-picture/split layouts yet.
 - Glossary `fetch` term lowercases sentence-initial "Fetch" only when matched exactly; one miss remains in eval.
-- No frontend unit tests yet.
+- No frontend unit tests in apps/web yet (the schema package has Vitest).
+- Captions inherit ASR errors ("use fish" for useFetch); panel-layout code is small (~17 px at 1080 wide).
+- Renders fetch GSAP from jsDelivr (needs internet); 16 Studio-editing lint warnings (nested caption lines).
+- On the owner's network the tunnel URL itself is TLS-intercepted; the app uses the 127.0.0.1 fallback there.
 
 ## 15. Unfinished work
-Phase 01 production (remote migrations, auth URLs, email confirmation, tunnel, production RLS test);
-Phase 04–09 entirely; WhisperX (deferred, D-016); onnxruntime-gpu OCR speed-up; Storage for small assets.
+Phase 01 production (remote migrations, auth URLs, email confirmation, backend switched to remote, production
+RLS/E2E test); Phase 04 remainder (brand kits, intro/outro, SRT/VTT, timing check); Phases 05–09; WhisperX (deferred, D-016); onnxruntime-gpu OCR speed-up; Storage for small assets.
 
 ## 16. Remote deployment status
 `docs/DEPLOYMENT.md` (single source of truth). Summary: Vercel https://reel-studio-taupe.vercel.app,
 latest production deployment `dpl_8kA8nFpHbdXaxCMX8un2vNi2iu2e` (commit `9a4ee55`) READY; public pages
 200, protected 307; env vars set by owner (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-`NEXT_PUBLIC_SITE_URL`); remote DB empty; no tunnel. Every push to `main` auto-deploys.
+`NEXT_PUBLIC_SITE_URL`); remote DB still empty (CLI linked, push pending); tunnel ✅ Dev Tunnels
+`https://j96sqlp6-8000.inc1.devtunnels.ms` (backend still on the local Supabase stack). Every push to `main` auto-deploys.
 
 ## 17. Owner actions needed (no secrets in chat)
-1. Supabase: accept the friend's org Developer invite for the account the CLI uses (`pnpm exec supabase login`),
-   or run the 3 migration files in the Reel-Studio SQL Editor.
-2. Supabase Auth: Site URL + redirect URLs (DEPLOYMENT.md), disable "Confirm email" for the demo.
-3. Tailscale: install, sign in, enable Funnel for this machine.
+1. Supabase: `pnpm exec supabase db push --linked` (5 migrations; the assistant's attempt was blocked by its
+   permission classifier). Verify with `migration list --linked`.
+2. Supabase Auth: Site URL + redirect URLs; decide on email confirmation (options and trade-offs in DEPLOYMENT.md).
+3. Put the Reel-Studio `SUPABASE_URL` + secret key into `apps/api/.env` yourself, restart `app.serve --tunnel devtunnel`,
+   then test signup → workspace → project → upload on production (the assistant may not enter passwords on non-local
+   sites). Tailscale is not needed (blocked by the network, D-024).
 4. Ask `Atharva486dherange` to accept the GitHub invitation; teammates commit their own work.
 5. Later: Meta developer app + IG professional account (Phase 07); Google Cloud project with YouTube Data
    + Analytics APIs and OAuth client (Phase 07). Secrets go only into `apps/api/.env`.
@@ -153,7 +173,8 @@ D-001 Hyperframes renderer · D-002 Zod canonical timeline · D-003 Supabase job
 heartbeat URL discovery · D-005 tunnels · D-006 chunked uploads · D-008 Python 3.11 · D-014 no
 cacheComponents · D-015 Hinglish-Apex ASR · D-016 WhisperX deferred (Hindi aligners need Devanagari) ·
 D-017 Blackwell JIT · D-018 RapidOCR + screen evidence · D-019 heuristic+LLM scoring with agreement veto ·
-D-020 reframing hysteresis/panel · D-021 synthetic fixtures.
+D-020 reframing hysteresis/panel · D-021 synthetic fixtures · D-023 one Python compiler · D-024 Dev Tunnels
+(Tailscale/Cloudflare blocked by Fortinet; ngrok excluded by owner) · D-025 explicit grants · D-026 render_jobs as export asset.
 
 ## 19. Files changed this session
 Everything in the repo was created this session (see `git log`). Main areas: docs/*, CLAUDE.md, AGENTS.md,
@@ -161,8 +182,9 @@ apps/web (landing, auth, app shell, studio, glossary), apps/api (API, worker, se
 supabase (3 migrations, RLS tests, config), tests/fixtures (synthetic lecture generator), scripts/.
 
 ## 20. Commits
-Latest commit before this checkpoint: `9a4ee55 docs: handoff and current task after Phase 03`.
-The checkpoint commit that contains this file follows it; run `git log --oneline -5` for its SHA.
+Session 2: `cc6636e` timeline schema · `9a8a1ee` Dev Tunnels + fallback · `3f19aec` render pipeline ·
+`d2555a9` explicit grants · `a6ac345` backend-probe workflow · then the docs commit containing this file
+(`git log --oneline -8`). Session 1 ended at `d696a94`.
 Full history (oldest → newest): d0f6f18, 521b046, ab3e82d, 927dc5a, 37ed03e, abe3d24, 9f49e62, 2db179a,
 0d5d58b, ad9d8f3, 8ea16fe, 7339471, 4b636a2, 629abc5, c444ae4, 6459e71, 1e1a9d2, 5e76599, 9a4ee55.
 All authored by `sahilkarande0918-cmd`; no co-author trailers.
@@ -171,9 +193,9 @@ All authored by `sahilkarande0918-cmd`; no co-author trailers.
 Clean and in sync with `origin/main` at checkpoint time (verify with `git status -sb`). No pending changes.
 
 ## 23. Next implementation tasks (in order)
-1. Phase 04 first task (CURRENT_TASK.md): timeline schema → timeline builder → Hyperframes composition → `render` job → download + UI.
-2. Brand kits (schema, editor, snapshot), intro/outro, caption styles, SRT/VTT, render cache, timing check.
-3. When owner unblocks: push migrations to `adjwycjsxtxvjockxtan`, production RLS test, tunnel + production upload test.
+1. Phase 04 brand kits (CURRENT_TASK.md): `brand_kits` table + editor + snapshot into the timeline; intro/outro; caption presets.
+2. SRT/VTT export, caption timing consistency check, vendor GSAP locally for offline renders.
+3. When the owner has pushed migrations: switch the backend to the remote project; production RLS + upload + render test via the tunnel.
 4. Phase 05 topic-to-video (Ollama script/storyboard, validated code, Kokoro TTS, code-typing compositions).
 5. Phase 06 editor (Zustand multi-track on the canonical timeline, `@hyperframes/player` preview, autosave, undo/redo).
 6. Phase 07 publishing (official IG Graph + YouTube APIs, encrypted tokens, durable scheduler), 08 analytics/feedback/SaaS, 09 QA + judge demo.
@@ -181,9 +203,9 @@ Clean and in sync with `origin/main` at checkpoint time (verify with `git status
 ## 24. How to resume and test
 1. Read docs in `CLAUDE.md` order; `git log --oneline -20`; `git status`.
 2. Start Docker Desktop; `pnpm exec supabase start -x vector,logflare,imgproxy,edge-runtime`.
-3. `cd apps/api && C:/Users/Sahil/AppData/Local/reel-studio/venv/Scripts/python -m app.serve --tunnel none`.
+3. `cd apps/api && C:/Users/Sahil/AppData/Local/reel-studio/venv/Scripts/python -m app.serve --tunnel devtunnel`.
 4. `pnpm dev`; sign in locally as `upload-owner@test.local`; open project "React hooks Hinglish lecture (synthetic)".
-5. Checks: web lint/tsc/build; `pytest -q`; `RS_INTEGRATION=1 pytest tests/test_upload_integration.py`; `pnpm exec supabase test db`.
+5. Checks: web lint/tsc/build; `pytest -q`; `RS_INTEGRATION=1 pytest tests/test_upload_integration.py`; `pnpm exec supabase test db`; `cd packages/timeline-schema && pnpm test`.
 
 ## 25. Critical warnings — do not repeat
 - Never touch the owner's personal Supabase projects visible to the current CLI login; only `adjwycjsxtxvjockxtan`.
@@ -192,6 +214,9 @@ Clean and in sync with `origin/main` at checkpoint time (verify with `git status
 - Don't fuzzy-match plain words into symbol terms (`component` → `@Component` bug) or merge spans starting with Hindi function words (`se data` → setData bug); keep the regression tests.
 - Don't let the LLM veto alone; it is noisy (dropped 9/10 windows when used alone).
 - The Vercel connector cannot read/write env vars (403); ask the owner or use the CLI after login.
-- Cloudflare quick tunnels fail on this network (port 7844); don't retry blindly.
+- Cloudflare quick tunnels and Tailscale fail on this network (Fortinet); use `--tunnel devtunnel`. Never use ngrok (owner).
+- Every new table needs explicit grants; Supabase defaults grant ALL incl. TRUNCATE (D-025).
+- After editing `packages/timeline-schema/src`, run `pnpm build:schema` (Vitest fails if the JSON Schema drifts).
+- curl/WebFetch from this machine cannot reach `*.devtunnels.ms` (TLS interception); verify externally (check-host.net or `backend-probe`).
 - Python one-off doc edits via heredoc broke once on quotes; prefer the Edit tool for docs.
 - Kill old worker processes before restarting (PowerShell `Get-CimInstance Win32_Process … app.workers.run`), or an old process claims jobs with stale code.

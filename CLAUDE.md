@@ -40,8 +40,9 @@ Trust repo docs and git history over remembered assumptions.
 - ASR: faster-whisper running the locally converted **Oriserve Whisper-Hindi2Hinglish-Apex** (CT2 fp16, `language=hi`, Roman-script Hinglish). WhisperX deferred (D-016).
 - Screen: OpenCV change maps (2 fps), RapidOCR (CPU) for code tokens; PySceneDetect installed but cuts currently come from the change map.
 - LLM: Ollama `qwen2.5vl:7b` (temperature 0) for highlight judgment; TTS: Kokoro via `hyperframes tts` (Mode B), Windows OneCore Ravi only for synthetic test fixtures.
-- Render: **Hyperframes** CLI v0.8.164 (local). Canonical timeline JSON → Hyperframes HTML composition → MP4. Editor preview will use `@hyperframes/player` on the same composition.
-- Canonical timeline schema (Phase 04): Zod in `packages/timeline-schema` (single source of truth) → generated JSON Schema consumed by Python. Not created yet.
+- Render: **Hyperframes** CLI v0.8.164 (local). Canonical timeline JSON → `apps/api/app/services/rendering/compose.py` (one Python compiler, D-023) → `index.html` → `render` worker job → ffprobe-verified MP4 (`render_jobs`). Editor preview will use `@hyperframes/player` on the same composition.
+- Canonical timeline schema: Zod in `packages/timeline-schema` (single source of truth) → `timeline.schema.json` (run `pnpm build:schema` after edits) validated in Python with `jsonschema`.
+- Public backend tunnel: **Microsoft Dev Tunnels** (`python -m app.serve --tunnel devtunnel`, stable URL). Tailscale/Cloudflare are blocked by the owner's Fortinet network; **never use ngrok** (owner's choice). D-024.
 
 ## Local paths (this machine)
 - Repo: `C:\dev\Reel-Studio` (moved out of OneDrive; the old OneDrive copy is obsolete).
@@ -49,7 +50,9 @@ Trust repo docs and git history over remembered assumptions.
 - Data/models/test recordings: `C:\Users\Sahil\AppData\Local\reel-studio\data`.
 
 ## Critical warnings
-- The Supabase CLI on this machine is logged into the owner's **personal** account. Never link, list for selection, query or migrate those projects. The only allowed remote project is `adjwycjsxtxvjockxtan` (Reel-Studio, friend's org).
+- The Supabase CLI login can also see the owner's **personal** projects. Never link, list for selection, query or migrate those. The repo is linked to `adjwycjsxtxvjockxtan` (Reel-Studio, friend's org); verify `supabase/.temp/project-ref` before any remote command.
+- Every new table needs explicit `grant`s: Supabase default privileges give `authenticated` ALL, including TRUNCATE, which bypasses RLS (D-025).
+- This network intercepts TLS for `*.devtunnels.ms`, so local curl cannot reach the tunnel; verify with `gh workflow run backend-probe.yml -f url=…`.
 - Synthetic fixtures are not real-world validation; never report them as such.
 - `ollama list` hangs on this machine; use `curl localhost:11434/api/tags`.
 - First GPU run after a reboot JIT-compiles CTranslate2 kernels for Blackwell (minutes); warm up before demos.
@@ -65,7 +68,8 @@ Per phase: read relevant files → define interfaces → implement → test → 
 A phase is complete only when its acceptance criteria in `docs/PHASES.md` are verified.
 
 ## Testing procedure
-- Web: `cd apps/web && pnpm lint && npx tsc --noEmit && npx next build` (no frontend unit-test runner yet; add Vitest when the timeline schema lands).
+- Web: `cd apps/web && pnpm lint && npx tsc --noEmit && npx next build`.
+- Timeline schema: `cd packages/timeline-schema && pnpm test && pnpm typecheck` (Vitest; fails if `timeline.schema.json` drifts).
 - API unit: `cd apps/api && C:/Users/Sahil/AppData/Local/reel-studio/venv/Scripts/python -m pytest -q` (+ `ruff check .`).
 - API integration (local stack + API running): `RS_INTEGRATION=1 ... pytest tests/test_upload_integration.py`.
 - DB: `pnpm exec supabase test db` (pgTAP RLS) and `pnpm exec supabase db lint --level warning` (Docker running).

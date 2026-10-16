@@ -1,6 +1,6 @@
 # Phases
 
-**Current phase:** next is **Phase 04 — captions, branding, Hyperframes MP4 rendering**. Phases 02–03 verified on synthetic fixtures only. Phase 01 production integration is blocked on owner actions (remote Supabase migrations, tunnel) and runs in parallel.
+**Current phase:** **Phase 04 — captions, branding, Hyperframes MP4 rendering** (first task verified: selected highlight → captioned 1080×1920 MP4). Phases 02–03 verified on synthetic fixtures only. Phase 01 production: tunnel ✅ (Dev Tunnels); remote migrations still pending an owner `db push`.
 
 Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reason)
 
@@ -10,7 +10,7 @@ Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reas
 | 01 | Frontend, auth, database, deployment | 🟡 local ✅ · production blocked |
 | 02 | Recording ingestion & transcription | 🟡 synthetic-verified |
 | 03 | Highlights & screen intelligence (reframing) | 🟡 synthetic-verified |
-| 04 | Captions, branding, Hyperframes rendering | ⬜ |
+| 04 | Captions, branding, Hyperframes rendering | 🟡 render + captions ✅ · brand kits ⬜ |
 | 05 | Topic-to-video | ⬜ |
 | 06 | Advanced timeline editor | ⬜ |
 | 07 | Instagram & YouTube publishing | ⬜ |
@@ -47,9 +47,9 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Migrations + RLS | ✅ local | `supabase test db` 16/16, `supabase db lint` clean |
 | FastAPI + /health + JWT auth | ✅ | pytest 5/5; `/me` real token 200, tampered 401 |
 | Frontend ↔ backend discovery, offline state | ✅ local | heartbeat row fresh; badge online → offline after API stop |
-| Remote Supabase project (friend's org) | ⛔ owner | `adjwycjsxtxvjockxtan` reachable but **no migrations applied**; CLI account cannot see it (DEPLOYMENT.md) |
+| Remote Supabase project (friend's org) | ⛔ owner | CLI now linked to `adjwycjsxtxvjockxtan`, but **no migrations applied** (5 pending); owner runs `supabase db push --linked` (DEPLOYMENT.md) |
 | Vercel deployment | ✅ pages / 🟡 app | https://reel-studio-taupe.vercel.app — owner set env vars; public pages 200, protected 307→login; app data flows fail until the remote DB has migrations |
-| Tunnel | 🟡 | `python -m app.serve` (Cloudflare http2 / Tailscale Funnel); Cloudflare blocked on current network (port 7844) |
+| Tunnel | ✅ | Microsoft Dev Tunnels, stable URL, verified from outside (`backend-probe` workflow); Tailscale/Cloudflare blocked by the Fortinet network (D-024) |
 | Repo moved out of OneDrive | ✅ | `C:\dev\Reel-Studio`, fresh clone, history intact |
 
 ## Phase 02 — verified on synthetic fixtures
@@ -80,3 +80,18 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Clip selection UI, crop preview/override | ✅ | browser: select, boundary edit snaps to word end (61.19 s), manual crop keyframe persisted |
 | Judge-style recordings | 🟡 | static/typing/jitter/long lines/scroll/window-switch covered (unit + fixtures); changing *diagram* and slides not yet in a real fixture |
 | Real class recording | ⛔ | none legally obtainable at ₹0 (TEST_STATUS) |
+
+## Phase 04 — in progress
+| Task | Status | Evidence |
+|------|--------|----------|
+| Canonical timeline schema (Zod → JSON Schema, Vitest) | ✅ | `packages/timeline-schema`, 6/6 |
+| Timeline from highlight + corrected words + crop keyframes | ✅ | `services/rendering/timeline.py`, validated against the schema |
+| Hyperframes compiler (camera follows keyframes, word captions in safe zone, code chips, bundled fonts) | ✅ | `services/rendering/compose.py`; preview geometry matches |
+| Render job (lint, live progress, ffprobe verify, thumbnail), cache by timeline hash | ✅ | two highlights rendered; crash → attempt 2 succeeded |
+| API + UI (render, progress, inline player, signed download) | ✅ | browser on local stack |
+| Brand kits (colours, fonts, logo, intro/outro, handle, watermark, caption presets) | ⬜ | next |
+| Intro/outro sub-compositions | ⬜ | |
+| SRT/VTT export | ⬜ | |
+| Quality presets | ✅ draft / looks / delivery | Export panel |
+| Timing consistency check (caption words vs audio) | ⬜ | |
+| Security fix: explicit table grants | ✅ | D-025, pgTAP 22/22 |
