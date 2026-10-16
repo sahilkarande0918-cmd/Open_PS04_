@@ -11,12 +11,13 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
 | Protected routes | ✅ `/dashboard`, `/projects` → 307 `/login?next=…` | curl, session 2 |
 | Vercel env vars | ✅ set by owner (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`) | values not readable by the assistant |
 | Supabase CLI link | ✅ `adjwycjsxtxvjockxtan` (project "reel.studio'org", org `yqdlgjynocbxxsmzeesy`) | `supabase/.temp/project-ref` |
-| Remote migrations | 🟡 **3 of 5 applied** (`…120000`, `…140000`, `…160000`); `…180000_render_jobs` and `…190000_explicit_grants` pending | `supabase migration list --linked`; `db push --dry-run` |
-| Remote schema | ✅ 14 tables, RLS enabled on all 14, 26 policies | `supabase db dump --linked --schema public` (read-only) |
-| Remote grants | ⛔ **security hole live until `…190000` is applied**: `anon` (anyone with the public key) holds TRUNCATE on 6 tables (`source_recordings`, `transcripts`, `transcript_words`, `transcript_segments`, `highlight_candidates`, `technical_glossaries`); `authenticated` holds TRUNCATE on all 14 | same dump; the pending migration revokes all of it (local: `anon` 0 grants, pgTAP 24/24) |
+| Remote migrations | 🟡 **5 of 6 applied** (owner push 2026-10-17 00:0x); `20261017000000_service_role_rpcs` pending | `supabase migration list --linked`; `db push --dry-run` |
+| Remote schema | ✅ 15 tables, RLS enabled on all 15 | `supabase db dump --linked --schema public,private` (read-only) |
+| Remote grants (anon/authenticated) | ✅ fixed: `anon` 0 table grants; `authenticated` 24 explicit grants, none with TRUNCATE (the earlier anon-TRUNCATE hole on 6 tables is closed) | dump after the push |
+| Remote grants (service_role) | ⛔ project uses secure-by-default privileges: `service_role` has only REFERENCES/TRIGGER/TRUNCATE/MAINTAIN and no EXECUTE on the worker RPCs, so the backend gets `permission denied` (heartbeat, uploads, worker) | backend log + dump; fix = pending `20261017000000_service_role_rpcs.sql` |
 | Remote Auth URL config / email confirmation | ⬜ not verified (needs dashboard) | |
 | Public backend tunnel | ✅ Microsoft Dev Tunnels, stable URL `https://j96sqlp6-8000.inc1.devtunnels.ms` | external probes 200; `backend-probe` workflow passed |
-| Backend data source | ⚠️ still the **local** Supabase stack: `C:\dev\Reel-Studio\apps\api\.env` has `SUPABASE_URL=http://127.0.0.1:54321` (last modified 23:32 by the assistant's `ALLOWED_ORIGINS` edit; no env file in the repo references the remote project) | file check 2026-10-17 |
+| Backend data source | ✅ `apps/api/.env` → `https://adjwycjsxtxvjockxtan.supabase.co` (owner, 2026-10-17 00:10); backend restarted with `--tunnel devtunnel` | `/health` 200; Supabase calls denied until the service_role migration |
 | Production ↔ backend | ⬜ needs remote migrations and the backend switched to the remote project | |
 
 ## Owner actions, in order
@@ -24,7 +25,7 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
    ```
    pnpm exec supabase db push --linked
    ```
-   Run it again **from `C:\dev\Reel-Studio`** (the first push applied only 3 migrations). It applies `…180000_render_jobs` and `…190000_explicit_grants`, the security fix: until then anyone can TRUNCATE six production tables. Then confirm with `pnpm exec supabase migration list --linked`, where all 5 rows need a remote timestamp.
+   Always run it from `C:\dev\Reel-Studio`; the OneDrive folder `Reel Studio` is a stale copy. Next pending: `20261017000000_service_role_rpcs` (backend DML + worker RPC grants). Confirm with `pnpm exec supabase migration list --linked`, where every row needs a remote timestamp.
 2. **Auth → URL Configuration** (Reel-Studio dashboard; may need the Owner account): Site URL `https://reel-studio-taupe.vercel.app`; Redirect URLs `https://reel-studio-taupe.vercel.app/**` and `http://localhost:3000/**`.
 3. **Email confirmation** (decision for the owner): with confirmation on, Supabase's built-in mailer only delivers to the project team's addresses at a low hourly rate, so judges cannot sign up. The options:
    - (a) Keep it on and demo with team accounts.
