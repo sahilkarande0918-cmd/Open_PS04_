@@ -25,7 +25,8 @@ Only results of commands actually run. Legend: ✅ pass · ❌ fail · ⛔ block
 | Signed-out redirect | ✅ | `curl -w %{redirect_url} /dashboard` |
 | `/me` real token / tampered token | ✅ 200 / 401 | curl with local-stack session |
 | Backend heartbeat + online/offline badge | ✅ local | row fresh in `backend_endpoints`; badge flips after API stop |
-| Remote Supabase / Vercel production | ⛔ blocked | owner logins required |
+| Vercel production pages | ✅ (2026-10-16 checkpoint) | `/`, `/login`, `/signup`, `/forgot-password` 200; `/dashboard`, `/projects`, `/glossary` 307 → login |
+| Remote Supabase (migrations, RLS, signup→onboarding on production) | ⛔ blocked | remote project has no tables; CLI cannot access the friend's org |
 | Email confirmation + password reset emails | ⬜ | local stack has confirmations off; test on remote |
 
 ## Phase 02 (2026-10-16)
@@ -79,6 +80,21 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | Reframing on focus fixture | ✅ | cuts at 26.0 s (browser) and 31.5 s (editor) = ground-truth switch times; single panel width |
 | Highlights UI | ✅ | select, word-snapped boundary edit, manual crop keyframe persisted (local DB) |
 | analyze job timings (lecture) | ✅ | activity 7.3 s, OCR 219.8 s, LLM ~13 s/clip after a ~86 s first load |
+
+## Checkpoint run (2026-10-16, end of session 1)
+| Check | Result | Command |
+|-------|--------|---------|
+| Web lint | ✅ 0 problems | `pnpm lint` (apps/web) |
+| Web typecheck | ✅ | `npx tsc --noEmit` |
+| Web production build | ✅ 13 routes | `npx next build` |
+| API unit tests | ✅ 29 passed, 6 skipped (integration) | `pytest -q` |
+| API lint | ✅ | `ruff check .` |
+| Upload integration (local stack + API) | ✅ 6/6 | `RS_INTEGRATION=1 pytest tests/test_upload_integration.py` |
+| RLS pgTAP | ✅ 16/16 | `pnpm exec supabase test db` |
+| DB lint | ✅ no issues | `pnpm exec supabase db lint --level warning` |
+| Production probe | ✅ pages / ⛔ data | Vercel `dpl_8kA8nFpH…` READY for `9a4ee55`; remote REST `PGRST205` (no tables) |
+| GPU ASR / OCR / LLM benchmarks | not re-run (results above still current) | — |
+| Frontend unit tests | ⬜ none exist yet | add Vitest with the timeline schema (Phase 04) |
 
 ## Unverified / untested
 Phases 03–09. Remote Supabase (migrations not applied), email confirmation and password-reset emails, public tunnel.

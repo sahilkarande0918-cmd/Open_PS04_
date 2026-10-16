@@ -48,18 +48,26 @@ the UI shows a truthful "processing backend offline" state when the heartbeat is
 
 ## Data flow — Mode A (Recording → Reels)
 
-1. **Upload**: browser → `POST /uploads` (chunked, resumable) → `data/orgs/<org>/recordings/<id>/source.<ext>`.
-2. **Ingest job**: ffprobe validation (real media, duration, dimensions, size) → row in `source_recordings`.
-3. **Audio**: FFmpeg → 16 kHz mono WAV, loudness-normalized.
-4. **Transcribe**: faster-whisper (word timestamps) → optional WhisperX alignment → `transcripts`/`transcript_words` (raw text kept).
-5. **Vocabulary correction**: dictionary + org glossary + OCR tokens from screen → `corrected_text` per word (raw preserved).
-6. **Audio features**: RMS energy, pauses, speech rate, pitch variation per window.
-7. **Screen analysis**: PySceneDetect cuts + sampled-frame OpenCV diffs → activity map, active-region boxes, OCR text regions.
-8. **Highlights**: sentence/thought segmentation → candidate windows 30–60 s snapped to sentence boundaries + pauses → features → heuristic score (labelled) + Ollama completeness/usefulness judgment → dedupe → ranked `highlight_candidates` with reasons.
-9. **Reframe**: per candidate, active-region track → smoothed 9:16 crop keyframes (`crop_keyframes` in the timeline) with layout mode (crop / code-panel / split / PiP).
-10. **Timeline**: AI builds a canonical timeline (video clip + crop keyframes + captions + brand snapshot).
-11. **Edit**: editor loads timeline; preview uses `@hyperframes/player` on the compiled composition.
-12. **Render job**: compile timeline → Hyperframes project dir → `hyperframes render` → MP4 → ffprobe verify → thumbnail → `export_assets` (optional upload to Storage).
+Steps 1–9 are **implemented** (session 1); 10–12 are Phase 04/06 work.
+
+1. **Upload** ✅ `POST /recordings` → `PUT /recordings/{id}/chunk?offset=N` (16 MB, offset-checked resume) → `POST /recordings/{id}/complete`; file at `DATA_DIR/orgs/<org>/recordings/<id>/source.<ext>` (`app/api/recordings.py`, `app/core/storage.py`).
+2. **Validate** ✅ ffprobe on complete (video+audio, 5 s–4 h, ≤4 GB); invalid files deleted; metadata on `source_recordings`; `transcribe` job inserted (`app/services/media.py`).
+3. **Audio** ✅ FFmpeg → `audio16k.wav` (16 kHz mono, highpass + loudnorm), cached.
+4. **Transcribe** ✅ faster-whisper with the Hinglish-Apex CT2 model, word timestamps, VAD, glossary hotwords (`services/transcription/whisper.py`). WhisperX deferred (D-016).
+5. **Vocabulary correction** ✅ built-in + org glossary spoken forms (`glossary.correct`), repetition-loop cleanup (`cleanup.py`); raw text always kept. Then the `analyze` job applies screen-OCR evidence (`glossary.correct_with_screen`).
+6. **Audio features** ✅ RMS dBFS per 0.5 s, pauses, speech rate (`services/highlights/audio_features.py`). Pitch not yet.
+7. **Screen analysis** ✅ 2 fps grey change maps → change fraction, active box, text density, hard cuts (`screen_analysis/activity.py`); RapidOCR every 6 s + after cuts, ≤90 frames (`screen_analysis/ocr.py`).
+8. **Highlights** ✅ sentences → 30–60 s windows on sentence ends → features + labelled heuristic score → strict speaker-relative pause pool → local LLM judge (veto on agreement) → ranked `highlight_candidates` with reasons (`highlights/candidates.py`, `highlights/llm.py`, `workers/analyze.py`).
+9. **Reframe** ✅ per highlight: smoothed crop keyframes (crop / panel layouts, cuts, hysteresis) stored in `highlight_candidates.crop_keyframes` (`screen_analysis/reframe.py`). Studio preview plays the source through these keyframes (`components/studio/highlights.tsx`, `cropAt`).
+10. **Timeline** ⬜ build a canonical timeline from a selected highlight (video item + crop keyframes + caption track + brand snapshot).
+11. **Edit** ⬜ editor on the canonical timeline; preview with `@hyperframes/player`.
+12. **Render** ⬜ compile timeline → Hyperframes project → `hyperframes render` → MP4 → ffprobe verify → thumbnail → export asset.
+
+### Worker jobs (implemented)
+`transcribe` (extract_audio → transcribe → correct_terms → save; then inserts `analyze`) and `analyze` (screen_activity → ocr → screen_terms → highlights → llm_judge → reframe). Claimed with `claim_next_job` (SKIP LOCKED), 30 s lock heartbeat, stale-lock requeue after 3 min, retries with backoff, `Permanent` errors fail fast, cancellation via `cancel_job` RPC checked between stages. Caches per recording: `audio16k.wav`, `activity.json`, `ocr.json`.
+
+### Tables (3 migrations)
+`profiles`, `organizations`, `organization_members`, `projects`, `jobs`, `job_events`, `backend_endpoints`, `audit_events` · `source_recordings`, `transcripts`, `transcript_segments`, `transcript_words`, `technical_glossaries` · `highlight_candidates`. RLS on all; membership helpers in `private` schema; column-level update grants for user edits.
 
 ## Data flow — Mode B (Topic → Video)
 

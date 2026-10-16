@@ -34,12 +34,25 @@ Trust repo docs and git history over remembered assumptions.
 - Keep the Vercel deployment green.
 
 ## Technology decisions (details in `docs/DECISIONS.md`)
-- Frontend `apps/web`: Next.js App Router, React, TypeScript, Tailwind, Zustand (editor), TanStack Query, Lucide, Radix primitives.
-- Backend `apps/api`: Python 3.11, FastAPI, Pydantic, local durable worker, FFmpeg.
-- Data: Supabase Postgres + Auth + Realtime + Storage (small assets). Large media stays on local disk.
-- AI: faster-whisper (+ WhisperX alignment), OpenCV + PySceneDetect, local OCR, Ollama (local LLM), Kokoro TTS.
-- Render: **Hyperframes** CLI (local). Canonical timeline JSON → Hyperframes HTML composition → MP4. Editor preview uses `@hyperframes/player` on the same composition.
-- Canonical timeline schema: Zod in `packages/timeline-schema` (single source of truth) → generated JSON Schema consumed by Python.
+- Frontend `apps/web`: Next.js 16 App Router (no cacheComponents), React 19, TypeScript, Tailwind v4, TanStack Query, Lucide; `proxy.ts` (Next 16 name for middleware). Zustand/Radix arrive with the editor (Phase 06).
+- Backend `apps/api`: Python 3.11, FastAPI, Pydantic, durable Supabase-backed worker (`app/workers`), FFmpeg.
+- Data: Supabase Postgres + Auth + Realtime (+ Storage later for small assets). Large media stays on local disk (`DATA_DIR`).
+- ASR: faster-whisper running the locally converted **Oriserve Whisper-Hindi2Hinglish-Apex** (CT2 fp16, `language=hi`, Roman-script Hinglish). WhisperX deferred (D-016).
+- Screen: OpenCV change maps (2 fps), RapidOCR (CPU) for code tokens; PySceneDetect installed but cuts currently come from the change map.
+- LLM: Ollama `qwen2.5vl:7b` (temperature 0) for highlight judgment; TTS: Kokoro via `hyperframes tts` (Mode B), Windows OneCore Ravi only for synthetic test fixtures.
+- Render: **Hyperframes** CLI v0.8.164 (local). Canonical timeline JSON → Hyperframes HTML composition → MP4. Editor preview will use `@hyperframes/player` on the same composition.
+- Canonical timeline schema (Phase 04): Zod in `packages/timeline-schema` (single source of truth) → generated JSON Schema consumed by Python. Not created yet.
+
+## Local paths (this machine)
+- Repo: `C:\dev\Reel-Studio` (moved out of OneDrive; the old OneDrive copy is obsolete).
+- Python venv: `C:\Users\Sahil\AppData\Local\reel-studio\venv` (there is **no** `apps/api/.venv`).
+- Data/models/test recordings: `C:\Users\Sahil\AppData\Local\reel-studio\data`.
+
+## Critical warnings
+- The Supabase CLI on this machine is logged into the owner's **personal** account. Never link, list for selection, query or migrate those projects. The only allowed remote project is `adjwycjsxtxvjockxtan` (Reel-Studio, friend's org).
+- Synthetic fixtures are not real-world validation; never report them as such.
+- `ollama list` hangs on this machine; use `curl localhost:11434/api/tags`.
+- First GPU run after a reboot JIT-compiles CTranslate2 kernels for Blackwell (minutes); warm up before demos.
 
 ## Repository conventions
 - pnpm workspaces monorepo: `apps/web`, `apps/api`, `packages/*`, `supabase/`, `docs/`.
@@ -52,8 +65,11 @@ Per phase: read relevant files → define interfaces → implement → test → 
 A phase is complete only when its acceptance criteria in `docs/PHASES.md` are verified.
 
 ## Testing procedure
-- Web: `pnpm --filter web lint && pnpm --filter web typecheck && pnpm --filter web test`
-- API: `cd apps/api && .venv/Scripts/python -m pytest`
+- Web: `cd apps/web && pnpm lint && npx tsc --noEmit && npx next build` (no frontend unit-test runner yet; add Vitest when the timeline schema lands).
+- API unit: `cd apps/api && C:/Users/Sahil/AppData/Local/reel-studio/venv/Scripts/python -m pytest -q` (+ `ruff check .`).
+- API integration (local stack + API running): `RS_INTEGRATION=1 ... pytest tests/test_upload_integration.py`.
+- DB: `pnpm exec supabase test db` (pgTAP RLS) and `pnpm exec supabase db lint --level warning` (Docker running).
+- Evaluation tools (manual): `tests/bench_asr.py`, `tests/eval_transcript.py`, `tests/eval_highlights.py`.
 - Media outputs verified with `ffprobe`.
 - Record every run (pass/fail/blocked) in `docs/TEST_STATUS.md`.
 

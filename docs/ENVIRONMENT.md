@@ -1,44 +1,42 @@
 # Environment
 
-Never commit real values. Files `.env`, `.env.local`, `apps/*/.env*` are git-ignored; only `*.example` files are tracked.
+Never commit real values. `.env`, `.env.*` (except `.env.example`) are git-ignored.
 
-## Frontend (`apps/web/.env.local`, and Vercel → Project → Settings → Environment Variables)
+## Frontend (`apps/web/.env.local` locally; Vercel → Settings → Environment Variables in production)
+| Variable | Public? | Value / where |
+|----------|---------|---------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | public | local: `http://127.0.0.1:54321` · production: `https://adjwycjsxtxvjockxtan.supabase.co` (set in Vercel) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public | local: printed by `supabase status` · production: Reel-Studio → Project Settings → API Keys → publishable (set in Vercel) |
+| `NEXT_PUBLIC_SITE_URL` | public | `http://localhost:3000` · production `https://reel-studio-taupe.vercel.app` (set in Vercel) |
+| `NEXT_PUBLIC_API_URL` | public | optional override; normally the backend URL is discovered from `backend_endpoints` |
 
-| Variable | Public? | Where to find it |
-|----------|---------|------------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | public config | Supabase Dashboard → Reel-Studio project → **Project Settings → Data API** → Project URL (`https://<ref>.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public config | **Project Settings → API Keys** → Publishable key (`sb_publishable_…`) |
-| `NEXT_PUBLIC_SITE_URL` | public config | `http://localhost:3000` locally; the Vercel production URL in Vercel |
-| `NEXT_PUBLIC_API_URL` | public config | Optional override of the local backend URL (normally discovered via `backend_endpoints`) |
+Current local `apps/web/.env.local` points at the **local** Supabase stack.
 
-## Backend (`apps/api/.env`, local machine only)
-
-| Variable | Secret? | Where |
+## Backend (`apps/api/.env`, processing machine only)
+| Variable | Secret? | Notes |
 |----------|---------|-------|
-| `SUPABASE_URL` | public config | same as above |
-| `SUPABASE_SECRET_KEY` | **SECRET** | **Project Settings → API Keys → Secret keys** (`sb_secret_…`). Paste only into `apps/api/.env`. Never into chat, git, or Vercel `NEXT_PUBLIC_*`. |
-| `TOKEN_ENCRYPTION_KEY` | **SECRET** | Generate locally: `python -c "import secrets,base64;print(base64.b64encode(secrets.token_bytes(32)).decode())"` |
-| `ALLOWED_ORIGINS` | config | `http://localhost:3000,https://<vercel-domain>` |
-| `DATA_DIR` | config | default `./data` |
-| `OLLAMA_URL` | config | `http://localhost:11434` |
-| `PUBLIC_API_URL` | config | the tunnel URL (auto-detected when the tunnel helper is used) |
+| `SUPABASE_URL` | no | local `http://127.0.0.1:54321` (current) |
+| `SUPABASE_SECRET_KEY` | **SECRET** | local stack's default key now; production secret only ever typed into this file |
+| `TOKEN_ENCRYPTION_KEY` | **SECRET** | needed from Phase 07 (OAuth tokens) |
+| `ALLOWED_ORIGINS` | no | `http://localhost:3000` now; add `https://reel-studio-taupe.vercel.app` for production |
+| `DATA_DIR` | no | `C:/Users/Sahil/AppData/Local/reel-studio/data` |
+| `PUBLIC_API_URL` | no | `http://127.0.0.1:8000` locally; overwritten by the tunnel launcher |
+| `WHISPER_MODEL` | no | `C:/Users/Sahil/AppData/Local/reel-studio/data/models/hinglish-apex-ct2` |
+| `WHISPER_LANGUAGE` | no | `hi` (Hinglish model) |
+| `WHISPER_DEVICE` / `WHISPER_COMPUTE_TYPE` | no | defaults `cuda` / `float16` |
+| `OLLAMA_URL` / `OLLAMA_MODEL` | no | defaults `http://localhost:11434` / `qwen2.5vl:7b` |
 
-Phase 07 additions (secrets, backend only): `META_APP_ID`, `META_APP_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+## Supabase projects
+- **Only** `adjwycjsxtxvjockxtan` (Reel-Studio, friend's organization). Never touch the owner's personal org/projects that the current CLI login shows.
+- Local development uses the Docker stack: `pnpm exec supabase start -x vector,logflare,imgproxy,edge-runtime` (API 54321, DB 54322, Studio 54323, Mailpit 54324).
 
-## Supabase project identification
-- **Only** the `Reel-Studio` project inside the friend's organization (owner account invited as Developer).
-- Project Reference ID: Dashboard → Project Settings → General → Reference ID. It is also the subdomain of the Project URL.
-- Before any migration: `supabase projects list` must show the ref next to the name `Reel-Studio`; `supabase link --project-ref <ref>` only with that ref.
-- The owner's personal SaaS project must never be linked, listed for selection, or queried.
-
-## Supabase CLI
-Run via `npx supabase` (no global install). Login: `npx supabase login` (opens browser; token stored by the CLI, not in the repo).
-`supabase db push` asks for the database password — type it into the CLI prompt only.
-
-## Local machine (verified 2026-10-16)
-- Windows 11, NVIDIA RTX 5050 Laptop GPU 8 GB (driver 616.64), CUDA 12.8 toolkit
-- Node 24.13.1, pnpm 12.5.1, Python 3.11 (backend venv), FFmpeg/FFprobe 8.1.2
-- Ollama running, model present: `qwen2.5vl:7b`
-- Docker 29.6.2 available (not required)
-- Not installed yet: Tesseract, cloudflared, Supabase CLI (use `npx`), Vercel CLI (use `npx`)
-- Note: the repo lives under OneDrive. `data/` and `node_modules/` should be excluded from OneDrive sync (or the repo moved outside OneDrive) to avoid sync churn on large media.
+## Machine (verified 2026-10-16)
+- Windows 11, NVIDIA RTX 5050 Laptop 8 GB (Blackwell sm_120, driver 616.64), CUDA 12.8 toolkit.
+- Node 24.13.1, pnpm 12.5.1, Python 3.11.9 (backend venv), FFmpeg/FFprobe 8.1.2, Docker 29.6.2.
+- Ollama with `qwen2.5vl:7b`. `cloudflared` 2026.10.1 installed (winget). Tailscale **not installed**.
+- Python venv `C:\Users\Sahil\AppData\Local\reel-studio\venv`: fastapi, uvicorn, supabase, faster-whisper 1.2.1, ctranslate2 4.8.3, nvidia-cublas/cudnn cu12 wheels, opencv-python-headless 4.14, scenedetect 0.6.7, rapidocr-onnxruntime 1.4.4, kokoro-onnx 0.6.1, soundfile, pytest, ruff.
+- Converter venv `C:\Users\Sahil\AppData\Local\reel-studio\convert-venv` (torch CPU, transformers, ctranslate2) — only for re-converting the ASR model.
+- Models: `data/models/hinglish-apex-ct2` (1.6 GB fp16), `data/models/models--Systran--faster-whisper-base`; HF cache holds the original Oriserve weights; Kokoro voices downloaded by Hyperframes.
+- Hyperframes CLI used via `npx --yes hyperframes@0.8.164` (set `HYPERFRAMES_PYTHON` to the venv python for `tts`; set `HYPERFRAMES_TELEMETRY=0 DO_NOT_TRACK=1`).
+- Windows OneCore voices present: Microsoft Ravi / Heera (en-IN), David, Mark, Zira.
+- Network: outbound TCP/UDP 7844 blocked (Cloudflare tunnel fails); port 22 blocked; 443 open.
