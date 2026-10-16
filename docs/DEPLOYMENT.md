@@ -21,8 +21,9 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
 | Production heartbeat | ✅ `backend_endpoints.primary` = `https://j96sqlp6-8000.inc1.devtunnels.ms`, refreshed every few seconds | service-client read (age 7 s) |
 | Tunnel against the production backend | ✅ external `/health` 200 (DE, KZ, RU); `backend-probe` run 38950101996 all steps green | check-host.net; GitHub Actions |
 | Production Auth | ✅ signup enabled · ⚠️ email confirmation ON (`mailer_autoconfirm: false`): the built-in mailer reaches only members of the Supabase org | `GET /auth/v1/settings` |
-| Production data | empty (0 profiles/orgs/projects) until the first signup | service-client counts |
-| Vercel `NEXT_PUBLIC_SUPABASE_URL` value | ❌ set to the REST endpoint (`…supabase.co/rest/v1/`), so signup failed with "Invalid path specified in request URL" (PostgREST PGRST125, reproduced) | owner screenshot 2026-10-17; fixed in code by `lib/supabase/env.ts` (origin only); owner should still set it to `https://adjwycjsxtxvjockxtan.supabase.co` |
+| Production signup → confirm → onboarding | ✅ (owner, 2026-10-17): 1 confirmed user, profile from trigger, workspace "Sahil Karande" with owner membership and `organization.created` audit event | service-client read (emails masked) |
+| Production project / upload / second-account RLS | ⬜ owner: create a project, refresh, upload a clip; RLS check needs a second account | |
+| Vercel `NEXT_PUBLIC_SUPABASE_URL` value | ✅ corrected by owner to `https://adjwycjsxtxvjockxtan.supabase.co` (was the REST endpoint (`…supabase.co/rest/v1/`), so signup failed with "Invalid path specified in request URL" (PostgREST PGRST125, reproduced) | owner screenshot 2026-10-17; fixed in code by `lib/supabase/env.ts` (origin only); owner should still set it to `https://adjwycjsxtxvjockxtan.supabase.co` |
 | Production ↔ backend with a real session | ⬜ owner E2E (step 5): needs a signed-in user, which the assistant may not create on a non-local site | |
 
 ## Owner actions, in order
