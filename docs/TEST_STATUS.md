@@ -139,6 +139,15 @@ Recording: a 7.5-min Hinglish **physics** class (distance vs displacement), uplo
 | Analyze | ✅ | 1,970 windows scored, 76 OCR frames in 191 s, 11 screen-term fixes, LLM judged 9 / dropped 3, **6 highlights** of 33–46 s |
 | Heartbeat during the run | ✅ | `backend_endpoints` age 5–18 s; earlier `permission denied` lines all predate the service_role grant |
 
+## Phase 04 — acceptance review fixes (2026-10-17)
+| Test | Result | Evidence |
+|------|--------|----------|
+| Balanced caption pages | ✅ | unit test (8 words + lone "hai." → 2 even pages; 5 words → 2+3 lines); real timelines: 0 one-word cues (16 and 22 cues), shortest cue 1.42 s |
+| Caption position | ✅ | unit test (upper → y 260–560, panel window [720, 864]; lower → [336, 864]); pgTAP rejects 'middle' (35/35); migration `20261017020000` live on production (8/8) |
+| Subtitle preview in studio | ✅ | browser: overlay shows the default kit's karaoke page at the playhead, Poppins, lower zone; note names the kit and preset |
+| Render performance benchmark | ✅ measured | default 152.6 s · 4 workers 261.2 s · NVENC 144.4 s (PSNR 56.8 dB, SSIM 0.9994 vs default; +8 % size) |
+| Full suite | ✅ | pytest 55 passed / 6 skipped; ruff; web lint + tsc; schema Vitest 8/8; pgTAP 35/35; db lint clean |
+
 ## Phase 04 — subtitles, timing check, offline GSAP (2026-10-17, local stack)
 | Test | Result | Evidence |
 |------|--------|----------|

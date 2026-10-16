@@ -18,7 +18,18 @@ TEST_STATUS → "Phase 04 — brand kits". Migration live on production (7/7).
 
 ### Done: captions export, timing check, offline GSAP (D-029)
 
-### Next task: Phase 04 acceptance review
+### Done: Phase 04 acceptance review
+Balanced caption pages, caption positioning, subtitle-accurate studio preview and the render benchmark
+(D-030, D-031). Results: PHASES.md "Phase 04 acceptance review".
+
+### Next task: Phase 05 — Topic → Video (Mode B)
+Read `docs/MASTER_PROMPT.md` §11 and §19 Phase 05. First slice: topic form → Ollama outline/script/storyboard
+as validated JSON → code examples validated by a parser → Kokoro TTS per scene (`hyperframes tts`) → word timings
+from faster-whisper on the TTS audio → canonical timeline with code-typing blocks and captions → the same renderer
+and brand kits. Acceptance: "JSON vs XML" → ~45 s MP4 with accurate script, animated code, voiceover and
+synced captions.
+
+### Phase 04 acceptance review (original note)
 Go through `docs/MASTER_PROMPT.md` Section 19 Phase 04 acceptance line by line against TEST_STATUS evidence; fix gaps (e.g. orphan one-word caption pages such as "hai." after a full page, thumbnail choice), render one highlight on **production** with a production brand kit, then mark Phase 04 and move to Phase 05 (topic → video).
 
 ### Captions export and timing check (original plan, done)

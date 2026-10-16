@@ -10,7 +10,7 @@ Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reas
 | 01 | Frontend, auth, database, deployment | 🟡 local ✅ · production E2E ✅ · second-account RLS ⬜ |
 | 02 | Recording ingestion & transcription | 🟡 synthetic-verified |
 | 03 | Highlights & screen intelligence (reframing) | 🟡 synthetic-verified |
-| 04 | Captions, branding, Hyperframes rendering | 🟡 render, captions, brand kits, SRT/VTT, timing check ✅ · acceptance review ⬜ |
+| 04 | Captions, branding, Hyperframes rendering | ✅ synthetic-verified (acceptance review done; production render pending owner) |
 | 05 | Topic-to-video | ⬜ |
 | 06 | Advanced timeline editor | ⬜ |
 | 07 | Instagram & YouTube publishing | ⬜ |
@@ -95,3 +95,26 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Quality presets | ✅ draft / looks / delivery | Export panel |
 | Timing consistency check (caption words vs audio) | ✅ | audio offset 0.0 ms + 100 % words on speech on real renders; sensitivity measured (D-029) |
 | Security fix: explicit table grants | ✅ | D-025, pgTAP 22/22 |
+
+### Phase 04 acceptance review (2026-10-17)
+Tasks (MASTER_PROMPT §19):
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 1–2 | Hyperframes integration, rendering adapter | ✅ | `services/rendering`, `workers/render.py` |
+| 3 | Synchronised caption compositions | ✅ | word on/off times from the transcript; timing check 0 ms offset |
+| 4–5 | Technical vocabulary styling, code formatting | ✅ | code-term chips in the code font (`AbortController`) |
+| 6 | Automatic brand-kit integration | ✅ | default kit preselected; snapshot per render |
+| 7 | Reusable intro/outro templates | ✅ | kit intro/outro cards (D-028) |
+| 8 | Video export pipeline | ✅ | lint → render → ffprobe verify → thumbnail → signed download |
+| 9 | MP4 quality settings | ✅ | draft / looks / delivery |
+| 10 | Thumbnails and previews | ✅ | thumbnail poster, inline player, subtitle-accurate studio preview |
+| 11 | Optimise render performance | ✅ measured | D-030 benchmark; defaults kept |
+| 12 | Caching for re-rendering | ✅ | timeline-hash cache |
+| 13 | Verify timing consistency | ✅ | D-029 |
+| 14 | Complete recording-to-video workflow | ✅ synthetic | upload → transcript → highlights → branded MP4 (local). Production: upload → transcribe → analyze ✅ on the owner's real physics class; a production render is pending the owner |
+
+§9 caption system: word timestamps ✅, Hinglish ✅, technical vocabulary ✅, capitalisation and special characters ✅ (VTT-escaped), subtitle preview ✅, subtitle editing ✅ (transcript editor feeds renders), multiple styles ✅, positioning ✅, font and colour selection ✅, word emphasis ✅, safe zones ✅, line breaking ✅ (D-031), burned-in + SRT/VTT ✅. Syntax highlighting of multi-line code blocks is n/a in Mode A (code comes from the recording); it belongs to Mode B (Phase 05).
+
+§10 brand kit: name, logo, colours (background/text/accent), fonts, caption style, intro/outro, handle, watermark, reusable kits (several per org, one default), preview before rendering, snapshots ✅. A per-kit "default video settings" option is not built (quality is chosen per render).
+
+Acceptance ("upload a programming class → professional 9:16 reel with highlight, framing, accurate captions, branding, audio sync"): ✅ on the **synthetic** programming lecture (frames, ffprobe and timing checks in TEST_STATUS). A real programming class remains unavailable (no free, licensed recording).

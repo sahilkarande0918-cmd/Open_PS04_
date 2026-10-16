@@ -119,3 +119,14 @@ SRT/VTT are generated on request from the render's stored timeline (no files, no
 - **Words on speech**: the share of caption words overlapping voiced 20 ms frames of the source. Correct timing scores 1.0; words shifted 0.5 s score 0.91 and 1 s scores 0.72, so the 0.95 threshold flags drifts of about 0.5 s or more. It cannot see smaller per-word errors (the measured mean is 0.27 s, D-016).
 
 A failed check is shown in the Export panel ("review before publishing") but never discards the render. GSAP 3.14.2 is now bundled into each render project, so renders need no internet.
+
+## D-030 — Render settings: one worker, CPU x264 (measured)
+Benchmark on the same 51.5 s branded composition (RTX 5050 laptop, 16 threads, 23 GB):
+- **Default** (Hyperframes auto-calibrates to 1 worker, drawelement capture on the GPU, x264 during capture): 152.6 s.
+- **`--workers 4`**: 261.2 s, slower, because the workers compete for one Chrome/GPU pipeline.
+- **`--gpu` (NVENC)**: 144.4 s, 5 % faster, visually identical to x264 (PSNR 56.8 dB, SSIM 0.9994) but an 8 % larger file.
+
+Frame capture dominates, so the defaults stay (portable to machines without NVENC). The speed levers are the `draft` preset, the timeline-hash render cache and re-rendering only what changed.
+
+## D-031 — Caption layout: balanced pages, two positions, server-computed preview
+Phrases end at sentence ends and pauses over 0.7 s. Each phrase goes on the fewest pages of at most 2 lines × 26 characters, with pages and lines split evenly, so no page holds a lone word. Brand kits choose the lower third (y 1350–1650) or top (y 260–560); code panels move to the opposite half. The studio preview asks the API for the exact pages, zone and panel position (`GET /highlights/{id}/preview`, same builder and paginator as the renderer), so preview and export cannot drift.
