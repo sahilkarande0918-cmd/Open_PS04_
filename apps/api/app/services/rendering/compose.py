@@ -13,6 +13,7 @@ times (keyframes, caption words) are offset by their item's start, i.e. the intr
 
 import html
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -149,19 +150,43 @@ def word_states(preset: str, text: str, accent: str, ink: str, chip: str, shadow
     }
 
 
+TOKEN = re.compile(
+    r'(?P<string>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')'
+    r'|(?P<comment>//[^\n]*|\#[^\n]*|<!--[\s\S]*?-->)'
+    r'|(?P<number>\b\d+(?:\.\d+)?\b)'
+    r'|(?P<keyword>\b(?:true|false|null|const|let|var|function|return|if|else|for|while|'
+    r'def|class|import|from|print|True|False|None|SELECT|FROM|WHERE)\b)'
+    r'|(?P<tag></?[A-Za-z][\w:-]*|/?>)'
+)
+
+
+def code_markup(source: str) -> str:
+    """Small offline lexical highlighter. Every source character is escaped, never executed."""
+    parts, end = [], 0
+
+    def chars(value: str) -> str:
+        return "".join(f'<span class="char">{html.escape(c)}</span>' for c in value)
+
+    for match in TOKEN.finditer(source):
+        parts.append(chars(source[end:match.start()]))
+        parts.append(f'<span class="tok-{match.lastgroup}">{chars(match.group())}</span>')
+        end = match.end()
+    parts.append(chars(source[end:]))
+    return "".join(parts)
+
+
 def compile_html(doc: dict) -> str:
     w, h, dur = doc["width"], doc["height"], doc["duration"]
-    video = next(i for t in doc["tracks"] for i in t["items"] if i["type"] == "video")
-    caption = next((i for t in doc["tracks"] for i in t["items"] if i["type"] == "caption"), None)
-    asset = doc["assets"][video["assetId"]]
+    items = [i for t in doc["tracks"] for i in t["items"]]
     brand, style = doc["brand"], doc["captionStyle"]
     bg, text, accent = (brand["colors"][k] for k in ("background", "text", "accent"))
     ink = brand_ink(accent)
     body_font, code_font = brand["fonts"]["body"], brand["fonts"]["code"]
     fs = style["fontSize"]
     preset = style.get("preset", "highlight-word")
-    lead, clip_d = video["start"], video["duration"]
-    tail_at = lead + clip_d
+    lead = min((i["start"] for i in items), default=0)
+    tail_at = max((i["start"] + i["duration"] for i in items), default=dur)
+    clip_d = tail_at - lead
     intro = brand.get("intro") or {"enabled": False}
     outro = brand.get("outro") or {"enabled": False}
     watermark = brand.get("watermark") or {"enabled": False}
@@ -172,13 +197,49 @@ def compile_html(doc: dict) -> str:
     chip = rgba(bg, 0.85)
     states = word_states(preset, text, accent, ink, chip, shadow)
 
-    cams = camera_track(video["cropKeyframes"], w, h, panel_center(style, h))
-    for c in cams:
-        c["t"] = round(c["t"] + lead, 3)
-    cap_at = caption["start"] if caption else 0
-    pages = paginate(caption["words"], style["maxCharsPerLine"], style["maxLines"], clip_d) if caption else []
+    media_html, cameras, overlays, code_sequences = [], [], [], []
+    for idx, item in enumerate(items):
+        start, duration = item["start"], item["duration"]
+        if item["type"] in ("video", "audio"):
+            asset = doc["assets"][item["assetId"]]
+            tag = item["type"]
+            media = (f'<{tag} id="media-{idx}" class="clip" src="{html.escape(asset["src"])}" '
+                     f'data-start="{start}" data-duration="{duration}" data-media-start="{item["sourceStart"]}" '
+                     f'data-has-audio="true" data-volume="{item.get("volume", 1)}"></{tag}>')
+            if tag == "video":
+                cams = camera_track(item["cropKeyframes"], w, h, panel_center(style, h))
+                for c in cams:
+                    c["t"] = round(c["t"] + start, 3)
+                cameras.append({"win": f"#win-{idx}", "cam": f"#cam-{idx}", "keys": cams})
+                media = (f'<div id="win-{idx}" class="win clip" data-start="{start}" data-duration="{duration}">'
+                         f'<div id="cam-{idx}" class="cam" style="width:{asset.get("width", w)}px;'
+                         f'height:{asset.get("height", h)}px">{media}</div></div>')
+            media_html.append(media)
+        elif item["type"] == "text":
+            overlays.append(f'<div class="text-overlay clip" data-start="{start}" data-duration="{duration}" '
+                            f'style="left:{item.get("x", 80)}px;top:{item.get("y", 180)}px;'
+                            f'font-size:{item.get("fontSize", 64)}px;color:{item.get("color", text)};'
+                            f'text-align:{item.get("align", "left")}">{html.escape(item["text"])}</div>')
+        elif item["type"] == "code":
+            revisions = [{"at": 0, "code": item["code"], "typingDuration": item.get("typingDuration", 2)},
+                         *item.get("changes", [])]
+            for ri, revision in enumerate(revisions):
+                at = revision["at"]
+                end = revisions[ri + 1]["at"] if ri + 1 < len(revisions) else duration
+                selector = f"code-{idx}-{ri}"
+                overlays.append(f'<section id="{selector}" class="code-panel clip" data-start="{start + at}" '
+                                f'data-duration="{end - at}"><header>{html.escape(item.get("title", ""))}'
+                                f'<small>{html.escape(item["language"])}</small></header>'
+                                f'<pre>{code_markup(revision["code"])}</pre></section>')
+                code_sequences.append({"selector": f"#{selector} .char", "at": start + at,
+                                       "duration": min(revision["typingDuration"], end - at)})
+    pages = []
+    for caption in (i for i in items if i["type"] == "caption"):
+        for page in paginate(caption["words"], style["maxCharsPerLine"], style["maxLines"], caption["duration"]):
+            pages.append({**page, "offset": caption["start"]})
     page_html, word_times, n = [], [], 0
     for p in pages:
+        cap_at = p["offset"]
         flat = [x for line in p["lines"] for x in line]
         lines_html = []
         for line in p["lines"]:
@@ -240,9 +301,21 @@ def compile_html(doc: dict) -> str:
 {fonts_css}
       html, body {{ margin: 0; background: {bg}; }}
       #root {{ position: relative; width: {w}px; height: {h}px; overflow: hidden; background: {bg}; }}
-      #win {{ position: absolute; left: 0; top: 0; width: {w}px; height: {h}px; overflow: hidden; }}
-      #cam {{ position: absolute; left: 0; top: 0; width: {asset["width"]}px; height: {asset["height"]}px; transform-origin: 0 0; }}
-      #cam video {{ display: block; width: 100%; height: 100%; }}
+      .win {{ position: absolute; left: 0; top: 0; width: {w}px; height: {h}px; overflow: hidden; }}
+      .cam {{ position: absolute; left: 0; top: 0; transform-origin: 0 0; }}
+      .cam video {{ display: block; width: 100%; height: 100%; }}
+      .text-overlay {{ position: absolute; max-width: calc(100% - 160px); white-space: pre-wrap;
+                         font: {bw} 64px/1.2 "{body_font}", sans-serif; }}
+      .code-panel {{ position: absolute; left: 64px; right: 64px; top: 380px; max-height: 880px;
+                      border: 2px solid {rgba(accent, 0.3)}; border-radius: 28px; padding: 32px;
+                      background: {rgba(text, 0.045)}; overflow: hidden; color: {text}; }}
+      .code-panel header {{ display: flex; justify-content: space-between; align-items: center; gap: 20px;
+                           font: {bw} 38px/1.3 "{body_font}", sans-serif; margin-bottom: 32px; }}
+      .code-panel small {{ font-size: 24px; color: {accent}; }}
+      .code-panel pre {{ font: {cw} 32px/1.55 "{code_font}", monospace; white-space: pre-wrap;
+                         overflow-wrap: anywhere; margin: 0; tab-size: 2; }}
+      .tok-string {{ color: #a7e3bc; }} .tok-number {{ color: #f0c488; }}
+      .tok-keyword, .tok-tag {{ color: #e9b5a5; }} .tok-comment {{ color: #9aa6a1; }}
       #caps {{ position: absolute; left: 48px; right: 48px; top: {style["safeTop"]}px; height: {style["safeBottom"] - style["safeTop"]}px; }}
       .page {{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }}
       .line {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 0 10px; }}
@@ -267,25 +340,29 @@ def compile_html(doc: dict) -> str:
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-width="{w}" data-height="{h}" data-duration="{dur}">
-      <div id="win"><div id="cam">
-        <video id="clip" class="clip" src="{html.escape(asset["src"])}" data-start="{lead}" data-duration="{clip_d}"
-          data-media-start="{video["sourceStart"]}" data-has-audio="true" data-volume="{video["volume"]}"></video>
-      </div></div>
+      {"".join(media_html)}
+      {"".join(overlays)}
       <div id="caps"{' class="boxed"' if preset == "boxed" else ""}>{"".join(page_html)}</div>
       {mark}
       {"".join(cards)}
     </div>
     <script>
-      const CAMS = {json.dumps(cams)};
+      const CAMERAS = {json.dumps(cameras)};
+      const CODE = {json.dumps(code_sequences)};
       const WORDS = {json.dumps(word_times)};
       const S = {json.dumps(states)};
       const tl = gsap.timeline({{ paused: true }});
-      CAMS.forEach((k, i) => {{
+      CAMERAS.forEach(track => track.keys.forEach((k, i) => {{
         const win = {{ y: k.win[0], height: k.win[1] }}, cam = {{ x: k.cam[0], y: k.cam[1], scale: k.cam[2] }};
-        if (k.jump) {{ tl.set("#win", win, k.t); tl.set("#cam", cam, k.t); return; }}
-        const d = Math.max(k.t - CAMS[i - 1].t, 0.001), at = CAMS[i - 1].t;
-        tl.to("#win", {{ ...win, duration: d, ease: "none" }}, at);
-        tl.to("#cam", {{ ...cam, duration: d, ease: "none" }}, at);
+        if (k.jump) {{ tl.set(track.win, win, k.t); tl.set(track.cam, cam, k.t); return; }}
+        const d = Math.max(k.t - track.keys[i - 1].t, 0.001), at = track.keys[i - 1].t;
+        tl.to(track.win, {{ ...win, duration: d, ease: "none" }}, at);
+        tl.to(track.cam, {{ ...cam, duration: d, ease: "none" }}, at);
+      }}));
+      CODE.forEach(sequence => {{
+        const chars = document.querySelectorAll(sequence.selector);
+        if (chars.length) tl.fromTo(chars, {{ opacity: 0 }}, {{ opacity: 1, duration: 0,
+          stagger: sequence.duration / chars.length, ease: "none" }}, sequence.at);
       }});
       WORDS.forEach(([id, on, off, code]) => {{
         const el = "#w" + id;

@@ -59,7 +59,26 @@ export const CaptionItem = z.object({
   words: z.array(CaptionWord),
 });
 
-export const Item = z.discriminatedUnion("type", [VideoItem, CaptionItem]);
+export const AudioItem = VideoItem.omit({ cropKeyframes: true }).extend({ type: z.literal("audio") });
+
+/** Source text is displayed only. It is never inserted as HTML or executed. */
+export const CodeItem = z.object({
+  id: z.string().min(1), type: z.literal("code"), start: seconds, duration: z.number().positive(),
+  language: z.enum(["json", "xml", "javascript", "typescript", "python", "sql", "html", "css", "text"]),
+  title: z.string().max(120).default(""), code: z.string().max(12000),
+  typingDuration: seconds.default(2),
+  changes: z.array(z.object({ at: seconds, code: z.string().max(12000), typingDuration: seconds })).max(30).default([]),
+});
+
+export const TextItem = z.object({
+  id: z.string().min(1), type: z.literal("text"), start: seconds, duration: z.number().positive(),
+  text: z.string().min(1).max(2000), x: z.number().default(80), y: z.number().default(180),
+  fontSize: z.number().int().min(12).max(200).default(64),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  align: z.enum(["left", "center", "right"]).default("left"),
+});
+
+export const Item = z.discriminatedUnion("type", [VideoItem, CaptionItem, AudioItem, CodeItem, TextItem]);
 
 export const Track = z.object({
   id: z.string().min(1),
@@ -130,11 +149,20 @@ export const Composition = z
         const path = ["tracks", ti, "items", ii];
         if (item.start + item.duration > c.duration + 1e-3)
           ctx.addIssue({ code: "custom", path, message: "item ends after the composition" });
-        if (item.type === "video") {
+        if (item.type === "video" || item.type === "audio") {
           if (!c.assets[item.assetId]) ctx.addIssue({ code: "custom", path, message: `unknown asset ${item.assetId}` });
+          else if (c.assets[item.assetId].kind !== item.type)
+            ctx.addIssue({ code: "custom", path, message: "media asset kind must match item type" });
           if (Math.abs(item.sourceEnd - item.sourceStart - item.duration) > 1e-3)
             ctx.addIssue({ code: "custom", path, message: "duration must equal sourceEnd - sourceStart (no speed change yet)" });
+          if (c.assets[item.assetId]?.duration !== undefined && item.sourceEnd > c.assets[item.assetId].duration! + 1e-3)
+            ctx.addIssue({ code: "custom", path, message: "sourceEnd exceeds asset duration" });
         }
+        if (item.type === "caption" && item.words.some(w => w.end < w.start || w.end > item.duration + 1e-3))
+          ctx.addIssue({ code: "custom", path, message: "caption word timing is outside the item" });
+        if (item.type === "code" && (item.typingDuration > item.duration || item.changes.some((change, i) =>
+          change.at + change.typingDuration > item.duration || (i > 0 && change.at <= item.changes[i - 1].at))))
+          ctx.addIssue({ code: "custom", path, message: "code changes must be ordered and finish within the item" });
       }),
     );
   });

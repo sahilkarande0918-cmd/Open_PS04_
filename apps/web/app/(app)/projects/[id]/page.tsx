@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordingStudio } from "@/components/studio/recording-studio";
+import { TopicStudio } from "@/components/studio/topic-studio";
 import { requireOrg } from "@/lib/supabase/server";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
@@ -14,13 +15,13 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         <Link href="/projects" className="text-[13px] text-muted hover:text-ink">
           Projects
         </Link>
-        <h1 className="mt-1 text-[28px] tracking-[-0.02em]">{project.name}</h1>
+        <h1 className="studio-heading mt-2">{project.name}</h1>
         <p className="text-[14px] text-muted">{project.mode === "recording" ? "Recording → Reels" : "Topic → Video"} · {project.status}</p>
       </div>
       {project.mode === "recording" ? (
         <RecordingStudio projectId={project.id} canEdit={org.role !== "viewer"} />
       ) : (
-        <p className="text-muted">Topic → Video generation arrives in Phase 05.</p>
+        <TopicStudio projectId={project.id} canEdit={org.role !== "viewer"} />
       )}
     </div>
   );

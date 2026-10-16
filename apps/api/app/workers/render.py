@@ -13,20 +13,13 @@ from app.core.config import get_settings
 from app.core.db import service_client
 from app.core.storage import render_dir, source_path
 from app.services import media
+from app.services.generation.narration import _cli as hyperframes_command
 from app.services.rendering import compose, sync, timeline
 from app.workers.jobs import Cancelled, JobContext, Permanent
 
 log = logging.getLogger(__name__)
-HYPERFRAMES = "hyperframes@0.8.164"
 ENV = {**os.environ, "HYPERFRAMES_TELEMETRY": "0", "DO_NOT_TRACK": "1"}
 RENDER_SPAN = (0.06, 0.94)  # share of job progress covered by the CLI
-
-
-def _npx() -> str:
-    found = shutil.which("npx")
-    if not found:
-        raise Permanent("Node.js (npx) is not installed on the processing machine")
-    return found
 
 
 def _update(render_id: str, **fields) -> None:
@@ -43,7 +36,7 @@ def _link_source(src: Path, dst: Path) -> None:
 
 
 def _render(ctx: JobContext, project: Path, quality: str) -> None:
-    cmd = [_npx(), "--yes", HYPERFRAMES, "render", "--quality", quality, "--video-frame-format", "png"]
+    cmd = hyperframes_command() + ["render", "--quality", quality, "--video-frame-format", "png"]
     cmd += ["--output", "out.mp4", "."]
     log_path = project / "render.log"
     with log_path.open("w", encoding="utf-8") as logf:
@@ -100,10 +93,14 @@ def run_render(ctx: JobContext) -> dict:
     if not render:
         raise Permanent("render row not found")
     rec = (
-        db.table("source_recordings").select("*").eq("id", render["recording_id"]).limit(1).execute().data
-        or [None]
-    )[0]
-    if not rec or not source_path(rec).exists():
+        (
+            db.table("source_recordings").select("*").eq("id", render["recording_id"]).limit(1).execute().data
+            or [None]
+        )[0]
+        if render.get("recording_id")
+        else None
+    )
+    if render.get("recording_id") and (not rec or not source_path(rec).exists()):
         raise Permanent("source recording is missing on this machine")
     doc = render["timeline"]
     try:
@@ -113,11 +110,15 @@ def run_render(ctx: JobContext) -> dict:
         ctx.stage("compose", 0.02, "Compiling the timeline into a Hyperframes composition")
         project = render_dir(render["organization_id"], rid)
         compose.write_project(doc, project)
-        _link_source(source_path(rec), project / doc["assets"]["source"]["src"])
+        if rec:
+            _link_source(source_path(rec), project / doc["assets"]["source"]["src"])
+        for asset in doc["assets"].values():
+            if asset["kind"] in ("video", "audio", "image") and not (project / asset["src"]).is_file():
+                raise Permanent(f"Render asset is missing: {asset['id']}")
 
         ctx.stage("lint", 0.04, "Checking the composition")
         lint = subprocess.run(
-            [_npx(), "--yes", HYPERFRAMES, "lint", "--json", "."],
+            hyperframes_command() + ["lint", "--json", "."],
             cwd=project,
             env=ENV,
             capture_output=True,
@@ -158,9 +159,6 @@ def run_render(ctx: JobContext) -> dict:
             check=True,
             timeout=120,
         )
-        (project / doc["assets"]["source"]["src"]).unlink(
-            missing_ok=True
-        )  # the link is only needed to render
         data_dir = get_settings().data_dir
         fields = {
             **meta,
@@ -173,7 +171,15 @@ def run_render(ctx: JobContext) -> dict:
         _update(rid, **fields)
         ctx.stage("sync_check", 0.98, "Checking caption and audio timing")
         try:
-            timing = sync.check(source_path(rec), out, doc)
+            videos = [i for t in doc["tracks"] for i in t["items"] if i["type"] == "video"]
+            timing = (
+                sync.check(source_path(rec), out, doc)
+                if rec and len(videos) == 1
+                else {
+                    "ok": None,
+                    "note": "Recording correlation check does not apply to generated/multiclip audio",
+                }
+            )
         except Exception as e:  # noqa: BLE001 — a failed check is reported, never discards a good render
             log.warning("timing check failed: %s", e)
             timing = {"ok": None, "error": f"{type(e).__name__}: {e}"[:300]}

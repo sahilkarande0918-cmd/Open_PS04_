@@ -34,6 +34,17 @@ const valid = () => ({
 });
 
 describe("Composition", () => {
+  it("supports generated narration, editable code changes and text in one document", () => {
+    const c = parseComposition({ ...valid(), assets: { voice: { id: "voice", kind: "audio", src: "voice.wav", duration: 10 } }, tracks: [
+      { id: "a", kind: "audio", items: [{ id: "a1", type: "audio", assetId: "voice", start: 0, duration: 10, sourceStart: 0, sourceEnd: 10 }] },
+      { id: "o", kind: "overlay", items: [{ id: "code", type: "code", start: 0, duration: 10, language: "json", code: "{}", typingDuration: 1, changes: [{ at: 5, code: '{"ok":true}', typingDuration: 2 }] }] },
+      { id: "t", kind: "text", items: [{ id: "title", type: "text", start: 0, duration: 10, text: "JSON" }] },
+    ] });
+    expect(c.tracks.flatMap(t => t.items).map(i => i.type)).toEqual(["audio", "code", "text"]);
+    const wrong = structuredClone(c);
+    wrong.assets.voice.kind = "image";
+    expect(() => parseComposition(wrong)).toThrow();
+  });
   it("parses a valid document and fills defaults", () => {
     const c = parseComposition(valid());
     expect(c.fps).toBe(30);

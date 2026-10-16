@@ -23,6 +23,7 @@ Reviewed 2026-10-16 via GitHub API (licence SPDX, archived flag, last push). Re-
 | Lucide | ISC | — | Icons |
 | Zod | MIT | — | Canonical timeline schema |
 | FastAPI / Pydantic / Uvicorn | MIT / MIT / BSD-3 | — | Backend |
+| pyca/cryptography (50.0.2) | Apache-2.0 OR BSD-3-Clause | active | Backend AES-GCM encryption of OAuth credentials |
 | supabase-js / @supabase/ssr / supabase-py | MIT | — | Supabase clients |
 
 LLM weights (Qwen family candidates) — licence verified per exact model in Phase 03 before use.

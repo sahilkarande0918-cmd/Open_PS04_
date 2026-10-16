@@ -61,9 +61,18 @@ export function RecordingStudio({ projectId, canEdit }: { projectId: string; can
   const words = useQuery({ queryKey: ["words", tr?.id], enabled: !!tr, queryFn: () => loadWords(tr!.id) });
 
   if (recording.isLoading) return <p className="text-muted">Loading…</p>;
+  if (recording.error) return <p role="alert" className="text-danger">Could not load the recording: {recording.error.message}</p>;
 
   return (
     <div className="space-y-6">
+      <ol aria-label="Recording workflow" className="studio-panel grid grid-cols-2 gap-3 p-4 text-[12px] md:grid-cols-4">
+        {[
+          ["01", "Upload recording", !!rec && rec.status !== "failed"],
+          ["02", "Transcribe", !!tr],
+          ["03", "Find highlights", jobs.data?.some((j) => j.job_type === "analyze" && j.status === "succeeded")],
+          ["04", "Review & export", false],
+        ].map(([step, label, done]) => <li key={String(step)} className="flex items-center gap-3"><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] ${done ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted"}`}>{step}</span><span className={done ? "font-semibold" : "text-muted"}>{label}</span></li>)}
+      </ol>
       {(!rec || rec.status === "failed") && canEdit && (
         <>
           {rec?.status === "failed" && <p className="text-[14px] text-danger">Last upload failed: {rec.error}</p>}
@@ -84,10 +93,8 @@ export function RecordingStudio({ projectId, canEdit }: { projectId: string; can
       {rec && latestJob && latestJob.status !== "succeeded" && (
         <JobProgress job={latestJob} recordingId={rec.id} onChange={refresh} />
       )}
-      {rec && tr && rec.width && rec.height && (
-        <Highlights recordingId={rec.id} projectId={projectId} srcW={rec.width} srcH={rec.height} canEdit={canEdit} words={words.data ?? []} />
-      )}
-      {rec && tr && <TranscriptView recordingId={rec.id} transcriptId={tr.id} canEdit={canEdit} />}
+      {rec && tr && <section className="studio-panel p-5"><div className="mb-5"><p className="studio-eyebrow mb-2">The source material</p><h2 className="text-[20px] font-semibold tracking-[-.03em]">Recording & transcript</h2></div><TranscriptView recordingId={rec.id} transcriptId={tr.id} canEdit={canEdit} /></section>}
+      {rec && tr && rec.width && rec.height && <section className="studio-panel p-5"><div className="mb-5"><p className="studio-eyebrow mb-2">The moments that matter</p><h2 className="text-[20px] font-semibold tracking-[-.03em]">Highlights & exports</h2><p className="mt-1 text-[12px] text-muted">Review the suggested clips, adjust framing, then render a reel.</p></div><Highlights recordingId={rec.id} projectId={projectId} srcW={rec.width} srcH={rec.height} canEdit={canEdit} words={words.data ?? []} /></section>}
     </div>
   );
 }

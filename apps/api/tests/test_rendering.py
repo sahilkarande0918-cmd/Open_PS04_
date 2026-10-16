@@ -173,6 +173,39 @@ def test_no_kit_means_no_intro_outro_or_watermark():
     assert 'id="intro"' not in html and 'id="outro"' not in html and 'id="mark"' not in html
 
 
+def test_generated_code_audio_and_text_compile_without_video():
+    doc = timeline.build(highlight(), REC, [], "topic")
+    doc["assets"] = {"voice": {"id": "voice", "kind": "audio", "src": "voice.wav", "duration": 10}}
+    doc["tracks"] = [
+        {"id": "a", "kind": "audio", "items": [{"id": "voice", "type": "audio", "assetId": "voice", "start": 0, "duration": 10, "sourceStart": 0, "sourceEnd": 10, "volume": 1}]},
+        {"id": "o", "kind": "overlay", "items": [{"id": "code", "type": "code", "start": 0, "duration": 10, "language": "json", "title": "<JSON>", "code": '{"x":"</script>"}', "typingDuration": 2, "changes": [{"at": 5, "code": '{"x":true}', "typingDuration": 1}]}]},
+        {"id": "t", "kind": "text", "items": [{"id": "title", "type": "text", "start": 0, "duration": 10, "text": "<img src=x onerror=alert(1)>"}]},
+    ]
+    timeline.validate(doc)
+    result = compose.compile_html(doc)
+    assert '<audio ' in result and 'src="voice.wav"' in result
+    assert "&lt;JSON&gt;" in result and "&lt;img" in result
+    assert '<img src=x' not in result and '{"x":"</script>"}' not in result
+    assert 'class="tok-string"' in result and 'class="tok-keyword"' in result
+
+
+def test_multiple_video_caption_items_keep_all_media_and_subtitle_cues():
+    from copy import deepcopy
+    from app.services.rendering.captions import cues
+
+    doc = timeline.build(highlight(), REC, [word("first", 10.2, 10.6)], "multi")
+    doc["duration"] = 20
+    for track in doc["tracks"]:
+        extra = deepcopy(track["items"][0])
+        extra["id"] += "-second"
+        extra["start"] = 10
+        track["items"].append(extra)
+    timeline.validate(doc)
+    result = compose.compile_html(doc)
+    assert result.count('<video ') == 2
+    assert len(cues(doc)) == 2 and cues(doc)[1][0] == pytest.approx(10.2)
+
+
 def test_kit_changes_change_the_cache_key():
     a = timeline.build(highlight(), REC, [], "r-1", kit=KIT)
     b = timeline.build(

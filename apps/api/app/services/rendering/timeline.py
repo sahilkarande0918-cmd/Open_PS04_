@@ -58,13 +58,30 @@ def validate(doc: dict) -> None:
         for item in track["items"]:
             if item["start"] + item["duration"] > doc["duration"] + 1e-3:
                 raise jsonschema.ValidationError(f"item {item['id']} ends after the composition")
-            if item["type"] == "video":
+            if item["type"] in ("video", "audio"):
                 if item["start"] < 0:
                     raise jsonschema.ValidationError("video item starts before the composition")
                 if item["assetId"] not in doc["assets"]:
                     raise jsonschema.ValidationError(f"unknown asset {item['assetId']}")
+                asset = doc["assets"][item["assetId"]]
+                if asset["kind"] != item["type"]:
+                    raise jsonschema.ValidationError("media asset kind must match item type")
                 if abs(item["sourceEnd"] - item["sourceStart"] - item["duration"]) > 1e-3:
                     raise jsonschema.ValidationError("duration must equal sourceEnd - sourceStart")
+                if "duration" in asset and item["sourceEnd"] > asset["duration"] + 1e-3:
+                    raise jsonschema.ValidationError("sourceEnd exceeds asset duration")
+            if item["type"] == "caption" and any(
+                w["end"] < w["start"] or w["end"] > item["duration"] + 1e-3 for w in item["words"]
+            ):
+                raise jsonschema.ValidationError("caption word timing is outside the item")
+            if item["type"] == "code":
+                changes = item.get("changes", [])
+                if item.get("typingDuration", 2) > item["duration"] or any(
+                    change["at"] + change["typingDuration"] > item["duration"]
+                    or (i > 0 and change["at"] <= changes[i - 1]["at"])
+                    for i, change in enumerate(changes)
+                ):
+                    raise jsonschema.ValidationError("code changes must be ordered and finish within the item")
 
 
 def logo_file(data_url: str) -> tuple[str, bytes]:

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, recordings, renders
+from app.api import health, publishing, recordings, renders, social, topics
 from app.core import heartbeat
 from app.core.config import get_settings
 
@@ -39,3 +39,6 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(recordings.router)
 app.include_router(renders.router)
+app.include_router(topics.router)
+app.include_router(social.router)
+app.include_router(publishing.router)

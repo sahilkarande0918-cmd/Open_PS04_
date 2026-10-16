@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireOrg } from "@/lib/supabase/server";
 
 export type ProjectFormState = { error?: string; notice?: string } | undefined;
@@ -12,9 +13,9 @@ export async function createProject(_: ProjectFormState, form: FormData): Promis
   if (mode !== "recording" && mode !== "topic") return { error: "Choose a mode." };
   const { supabase, org, userId } = await requireOrg();
   // RLS decides whether this role may create projects in this workspace.
-  const { error } = await supabase.from("projects").insert({ organization_id: org.id, name, mode, created_by: userId });
+  const { data, error } = await supabase.from("projects").insert({ organization_id: org.id, name, mode, created_by: userId }).select("id").single();
   if (error) return { error: error.code === "42501" ? "Your role cannot create projects here." : error.message };
   revalidatePath("/projects");
   revalidatePath("/dashboard");
-  return { notice: `Created “${name}”.` };
+  redirect(`/projects/${data.id}`);
 }

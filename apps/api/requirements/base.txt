@@ -5,3 +5,4 @@ httpx==0.28.*
 supabase==2.*
 python-multipart==0.0.*
 jsonschema==4.*
+cryptography==50.0.2

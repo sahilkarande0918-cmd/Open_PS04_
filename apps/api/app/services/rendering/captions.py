@@ -5,20 +5,16 @@ from app.services.rendering.compose import paginate
 
 
 def cues(doc: dict) -> list[tuple[float, float, str]]:
-    item = next((i for t in doc["tracks"] for i in t["items"] if i["type"] == "caption"), None)
-    if not item or not item["words"]:
-        return []
     style = doc["captionStyle"]
-    pages = paginate(item["words"], style["maxCharsPerLine"], style["maxLines"], item["duration"])
-    off = item["start"]
-    return [
-        (
-            off + p["start"],
-            off + p["end"],
-            "\n".join(" ".join(w["text"] for w in line) for line in p["lines"]),
+    result = []
+    for item in (i for t in doc["tracks"] for i in t["items"] if i["type"] == "caption"):
+        pages = paginate(item["words"], style["maxCharsPerLine"], style["maxLines"], item["duration"])
+        result.extend(
+            (item["start"] + p["start"], item["start"] + p["end"],
+             "\n".join(" ".join(w["text"] for w in line) for line in p["lines"]))
+            for p in pages
         )
-        for p in pages
-    ]
+    return sorted(result, key=lambda cue: cue[0])
 
 
 def _ts(t: float, sep: str) -> str:

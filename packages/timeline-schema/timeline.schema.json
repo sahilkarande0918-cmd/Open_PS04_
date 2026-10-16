@@ -296,6 +296,198 @@
                     "duration",
                     "words"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "audio"
+                    },
+                    "assetId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "start": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "duration": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "sourceStart": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "sourceEnd": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "volume": {
+                      "default": 1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 3.98
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "assetId",
+                    "start",
+                    "duration",
+                    "sourceStart",
+                    "sourceEnd"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "code"
+                    },
+                    "start": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "duration": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "language": {
+                      "type": "string",
+                      "enum": [
+                        "json",
+                        "xml",
+                        "javascript",
+                        "typescript",
+                        "python",
+                        "sql",
+                        "html",
+                        "css",
+                        "text"
+                      ]
+                    },
+                    "title": {
+                      "default": "",
+                      "type": "string",
+                      "maxLength": 120
+                    },
+                    "code": {
+                      "type": "string",
+                      "maxLength": 12000
+                    },
+                    "typingDuration": {
+                      "default": 2,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "changes": {
+                      "default": [],
+                      "maxItems": 30,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "code": {
+                            "type": "string",
+                            "maxLength": 12000
+                          },
+                          "typingDuration": {
+                            "type": "number",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "code",
+                          "typingDuration"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "start",
+                    "duration",
+                    "language",
+                    "code"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "start": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "duration": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2000
+                    },
+                    "x": {
+                      "default": 80,
+                      "type": "number"
+                    },
+                    "y": {
+                      "default": 180,
+                      "type": "number"
+                    },
+                    "fontSize": {
+                      "default": 64,
+                      "type": "integer",
+                      "minimum": 12,
+                      "maximum": 200
+                    },
+                    "color": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "align": {
+                      "default": "left",
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "start",
+                    "duration",
+                    "text"
+                  ]
                 }
               ]
             }

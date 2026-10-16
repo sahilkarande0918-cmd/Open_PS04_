@@ -16,9 +16,18 @@ from app.workers.jobs import Cancelled, JobContext, Permanent
 from app.workers.analyze import run_analyze
 from app.workers.render import run_render
 from app.workers.transcribe import run_transcribe
+from app.workers.publish import run_insights, run_publish
+from app.workers.generate import run_generate
 
 log = logging.getLogger("worker")
-HANDLERS = {"transcribe": run_transcribe, "analyze": run_analyze, "render": run_render}
+HANDLERS = {
+    "transcribe": run_transcribe,
+    "analyze": run_analyze,
+    "render": run_render,
+    "publish": run_publish,
+    "insights": run_insights,
+    "generate": run_generate,
+}
 WORKER_ID = f"{socket.gethostname()}-{int(time.time())}"
 POLL_S = 2
 HEARTBEAT_S = 30

@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
@@ -10,6 +11,13 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_secret_key: str = ""
     token_encryption_key: str = ""
+    instagram_client_id: str = ""
+    instagram_client_secret: SecretStr = SecretStr("")
+    instagram_redirect_uri: str = ""
+    instagram_api_version: str = "v24.0"
+    google_client_id: str = ""
+    google_client_secret: SecretStr = SecretStr("")
+    google_redirect_uri: str = ""
     allowed_origins: str = "http://localhost:3000"
     data_dir: Path = Path("./data")
     ollama_url: str = "http://localhost:11434"
