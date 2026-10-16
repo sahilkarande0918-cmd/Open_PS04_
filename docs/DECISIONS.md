@@ -24,7 +24,8 @@ Format: ID — decision. *Alternatives* · *Why* · *Trade-off*.
 
 ## D-005 — Tunnel: Cloudflare quick tunnel (primary), ngrok free static domain (fallback)
 *Why:* No account, no bandwidth cap stated for quick tunnels; ngrok free has a monthly data cap that video uploads would exhaust. Cloudflare limits request bodies (~100 MB), so uploads are chunked (D-006).
-*Trade-off:* Quick-tunnel URLs are ephemeral and best-effort; documented in DEPLOYMENT.md. To be verified live in Phase 01.
+*Trade-off:* Quick-tunnel URLs are ephemeral and best-effort; documented in DEPLOYMENT.md.
+*Update 2026-10-16:* verified that the owner's current network blocks outbound port 7844 (TCP and UDP), which Cloudflare tunnels require (`cloudflared` pre-checks: QUIC FAIL, HTTP/2 FAIL). Added **Tailscale Funnel** (free personal plan, outbound 443 only, stable `*.ts.net` URL) as the second option in `python -m app.serve --tunnel tailscale`. ngrok rejected as default: free plan data-transfer cap is too small for video uploads.
 
 ## D-006 — Chunked resumable uploads straight to the local API
 *Alt:* tus server, Supabase Storage (1 GB free total, 50 MB per-file limit on Free).
