@@ -58,10 +58,11 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Recording-upload UI (drag-drop, progress, resume, offline state) | ✅ code | `components/studio/uploader.tsx` |
 | Backend ingestion, chunked resumable, validation | ✅ | upload integration tests 6/6 |
 | FFprobe metadata / audio extraction | ✅ code | `services/media.py` (run in job) |
-| faster-whisper | 🟡 | installing CUDA libs; model: Oriserve Hinglish-Apex (CT2 conversion) |
-| WhisperX alignment | ⬜ | optional stage, needs torch cu128 |
+| faster-whisper | ✅ | Hinglish-Apex CT2 on CUDA, 25.8× real time on the 192 s lecture |
+| WhisperX alignment | ⬜ deferred | D-016: no Roman-Hinglish alignment model; faster-whisper word timing measured ±0.27 s |
 | Store transcript (raw + corrected, words, segments) | ✅ schema | migration 20261016140000 |
 | Glossary correction + institute glossary | ✅ | glossary tests 5/5, `/glossary` page |
-| Transcript editor synced to video | ✅ code | `transcript-view.tsx` (needs real run) |
-| Progress, retries, cancellation | ✅ code | worker `run.py` (needs real run) |
-| Benchmark | ⬜ | |
+| Transcript editor synced to video | ✅ | browser: search, seek, highlight follows playback, edit persists |
+| Progress, retries, cancellation | ✅ | UI cancel/retry; worker kill → stale requeue → attempt 2 succeeded |
+| Benchmark | ✅ | 7.45 s for 192.5 s audio, 2.2 GB GPU (TEST_STATUS) |
+| **Acceptance** | 🟡 | all criteria pass on the SYNTHETIC lecture; real-world recording unverified (none legally free); AbortController/Kubernetes misses → Phase 03 OCR |
