@@ -47,6 +47,21 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Migrations + RLS | ✅ local | `supabase test db` 16/16, `supabase db lint` clean |
 | FastAPI + /health + JWT auth | ✅ | pytest 5/5; `/me` real token 200, tampered 401 |
 | Frontend ↔ backend discovery, offline state | ✅ local | heartbeat row fresh; badge online → offline after API stop |
-| Remote Supabase project (friend's org) | ⛔ owner | needs `supabase login` + project ref |
-| Vercel deployment | ⛔ owner | needs Vercel login / GitHub integration |
-| Tunnel | ⬜ | cloudflared not installed yet |
+| Remote Supabase project (friend's org) | ⛔ owner | project `adjwycjsxtxvjockxtan` reachable but empty; CLI account cannot see it (see DEPLOYMENT.md) |
+| Vercel deployment | ⛔ owner | deployed READY at https://reel-studio-taupe.vercel.app but every route 500: env vars missing (Vercel connector has no env permission, CLI logged out) |
+| Tunnel | 🟡 | `python -m app.serve` (Cloudflare http2 / Tailscale Funnel); Cloudflare blocked on current network (port 7844) |
+| Repo moved out of OneDrive | ✅ | `C:\dev\Reel-Studio`, fresh clone, history intact |
+
+## Phase 02 — in progress
+| Task | Status | Evidence |
+|------|--------|----------|
+| Recording-upload UI (drag-drop, progress, resume, offline state) | ✅ code | `components/studio/uploader.tsx` |
+| Backend ingestion, chunked resumable, validation | ✅ | upload integration tests 6/6 |
+| FFprobe metadata / audio extraction | ✅ code | `services/media.py` (run in job) |
+| faster-whisper | 🟡 | installing CUDA libs; model: Oriserve Hinglish-Apex (CT2 conversion) |
+| WhisperX alignment | ⬜ | optional stage, needs torch cu128 |
+| Store transcript (raw + corrected, words, segments) | ✅ schema | migration 20261016140000 |
+| Glossary correction + institute glossary | ✅ | glossary tests 5/5, `/glossary` page |
+| Transcript editor synced to video | ✅ code | `transcript-view.tsx` (needs real run) |
+| Progress, retries, cancellation | ✅ code | worker `run.py` (needs real run) |
+| Benchmark | ⬜ | |

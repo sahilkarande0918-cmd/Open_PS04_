@@ -17,6 +17,8 @@ _model_key: tuple | None = None
 
 def _add_cuda_dlls() -> None:
     """pip's nvidia-cublas/cudnn wheels put DLLs in site-packages/nvidia/*/bin; Windows needs them on the path."""
+    # Blackwell GPUs JIT-compile CTranslate2 kernels on first use (minutes); keep them cached on disk.
+    os.environ.setdefault("CUDA_CACHE_MAXSIZE", str(4 * 1024**3))
     if sys.platform != "win32":
         return
     import site

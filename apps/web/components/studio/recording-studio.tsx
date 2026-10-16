@@ -28,15 +28,16 @@ export function RecordingStudio({ projectId, canEdit }: { projectId: string; can
     queryKey: ["recording", projectId],
     queryFn: async () => {
       const sb = createClient();
-      const { data: rec, error } = await sb
+      const { data: recs, error } = await sb
         .from("source_recordings")
         .select("id, filename, status, size_bytes, duration_s, width, height, fps, video_codec, audio_codec, error")
         .eq("project_id", projectId)
         .neq("status", "uploading")
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
       if (error) throw error;
+      // Newest usable recording wins; a failed upload only shows when nothing usable exists.
+      const rec = recs.find((r) => r.status !== "failed") ?? recs[0];
       if (!rec) return null;
       const { data: tr } = await sb
         .from("transcripts")

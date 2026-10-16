@@ -50,3 +50,10 @@ def test_org_glossary_and_screen_tokens():
 def test_unknown_words_untouched_and_no_correction_metadata():
     out = correct(words("yeh loop har element pe chalta hai"), G)
     assert all("correction" not in w["metadata"] for w in out)
+
+
+def test_symbol_terms_never_fuzzy_match_plain_words():
+    # regression: "component" was fuzzy-matched to "@Component" (found on a real GPU run)
+    out = correct(words("when the component unmounts"), G)
+    assert shown(out) == "when the component unmounts"
+    assert shown(correct(words("at the rate component lagao"), G)) == "@Component lagao"

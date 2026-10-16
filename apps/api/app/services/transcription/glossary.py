@@ -96,9 +96,9 @@ class Glossary:
             if toks:
                 self.variants[toks] = term
                 self.max_len = max(self.max_len, len(toks))
-        key = _norm(term)
-        if len(key) >= _FUZZY_MIN_LEN and " " not in term:
-            self.fuzzy_terms[key] = term
+        # Fuzzy matching only for plain identifiers: "@Component" must never swallow the word "component".
+        if len(term) >= _FUZZY_MIN_LEN and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", term):
+            self.fuzzy_terms[term.lower()] = term
 
     @classmethod
     def build(cls, org_terms: list[dict] = (), screen_tokens: list[str] = ()) -> "Glossary":
