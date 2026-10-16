@@ -1,7 +1,7 @@
 -- RLS isolation tests. Run: pnpm exec supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(28);
 
 -- two users, each in their own org
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -90,6 +90,9 @@ select is((select count(*)::int from information_schema.role_table_grants where 
 -- the worker's RPCs must be executable with the service_role key (not the default on hosted projects)
 select ok(has_function_privilege('service_role', 'public.claim_next_job(text, text[])', 'execute'), 'service_role can claim jobs');
 select ok(has_function_privilege('service_role', 'public.requeue_stale_jobs(interval)', 'execute'), 'service_role can requeue stale jobs');
+
+select ok(has_table_privilege('service_role', 'public.backend_endpoints', 'select, insert, update'), 'service_role can write the backend heartbeat');
+select ok(has_table_privilege('service_role', 'public.render_jobs', 'select, insert, update, delete'), 'service_role can manage renders');
 
 -- claim works for the service path and is exclusive
 select is((select (public.claim_next_job('w1')).status::text), 'running', 'worker claims queued job');
