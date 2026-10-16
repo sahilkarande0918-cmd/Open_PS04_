@@ -1,0 +1,56 @@
+# Checks the public processing-backend tunnel from outside the owner's network (the owner's own network
+# intercepts TLS, so it cannot test this itself). Manual only; the URL is an input, never committed.
+name: backend-probe
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Backend base URL (e.g. https://xxxx-8000.inc1.devtunnels.ms)"
+        required: true
+      origin:
+        description: "Frontend origin that must pass CORS"
+        default: "https://reel-studio-taupe.vercel.app"
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      URL: ${{ inputs.url }}
+      ORIGIN: ${{ inputs.origin }}
+      SKIP: "X-Tunnel-Skip-AntiPhishing-Page: true"
+      UA: "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+    steps:
+      - name: Health (as the frontend calls it)
+        run: |
+          body=$(curl -sS -m 20 -H "$SKIP" -H "Origin: $ORIGIN" -D h.txt "$URL/health")
+          echo "$body"; grep -i "access-control-allow-origin" h.txt
+          echo "$body" | grep -q '"status":"ok"'
+      - name: CORS preflight for a chunk upload
+        run: |
+          curl -sS -m 20 -o /dev/null -D h.txt -X OPTIONS -H "$SKIP" -H "Origin: $ORIGIN" \
+            -H "Access-Control-Request-Method: PUT" \
+            -H "Access-Control-Request-Headers: authorization,content-type,x-tunnel-skip-antiphishing-page" \
+            "$URL/recordings/00000000-0000-0000-0000-000000000000/chunk?offset=0"
+          cat h.txt; grep -qi "access-control-allow-origin: $ORIGIN" h.txt
+      - name: Protected routes reject anonymous calls
+        run: |
+          code=$(curl -sS -m 20 -o /dev/null -w "%{http_code}" -H "$SKIP" "$URL/recordings/00000000-0000-0000-0000-000000000000")
+          echo "anonymous GET /recordings/{id} -> $code"; test "$code" = 401
+      - name: 8 MiB chunk passes the relay (reaches the API, which rejects it unauthenticated)
+        run: |
+          head -c 8388608 /dev/urandom > chunk.bin
+          code=$(curl -sS -m 120 -o out.txt -w "%{http_code}" -X PUT -H "$SKIP" -H "Content-Type: application/octet-stream" \
+            --data-binary @chunk.bin "$URL/recordings/00000000-0000-0000-0000-000000000000/chunk?offset=0")
+          echo "8 MiB PUT -> $code"; head -c 300 out.txt; echo; test "$code" = 401
+      - name: Media-style request without the skip header (what <video src> sends)
+        run: |
+          curl -sS -m 20 -o out.txt -D h.txt -H "$UA" -H "Accept: */*" -H "Sec-Fetch-Dest: video" -H "Sec-Fetch-Mode: no-cors" \
+            -H "Range: bytes=0-" "$URL/recordings/00000000-0000-0000-0000-000000000000/media?exp=1&sig=x" || true
+          head -1 h.txt; grep -i "content-type" h.txt; head -c 200 out.txt; echo
+          # our API answers a bad signature with JSON 403; an HTML page here would be the tunnel interstitial
+          grep -qi "content-type: application/json" h.txt
+      - name: Navigation without the skip header (informational)
+        run: |
+          curl -sS -m 20 -o out.txt -D h.txt -H "$UA" -H "Accept: text/html" -H "Sec-Fetch-Mode: navigate" "$URL/health" || true
+          head -1 h.txt; grep -i "content-type" h.txt; head -c 200 out.txt; echo
