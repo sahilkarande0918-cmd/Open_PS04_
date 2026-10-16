@@ -1,3 +1,5 @@
+> **Latest checkpoint (2026-10-17, after the Codex handoff): read [CHECKPOINT.md](CHECKPOINT.md) first.** Mode B now works end to end (JSON vs XML → 46.8 s 1080×1920 MP4, plays and downloads in the UI); repeated-code prompt fix not yet re-verified on a new video. Instagram Business OAuth still pending; nothing published. YouTube postponed (D-035). HEAD at checkpoint start: `fe984a0`.
+
 > **Owner priorities from 2026-10-17 (Claude resume after the Codex handoff), superseding earlier priority notes:**
 > 1. Phase 05: Topic → Video produces a real downloadable ~45 s MP4 (JSON vs XML).
 > 2. UI: finish the professional redesign (reference screenshots are for structure only, not colours or theme).

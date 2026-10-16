@@ -1,3 +1,5 @@
+> **Latest checkpoint (2026-10-17, after the Codex handoff): read [CHECKPOINT.md](CHECKPOINT.md) first.** Mode B now works end to end (JSON vs XML → 46.8 s 1080×1920 MP4, plays and downloads in the UI); repeated-code prompt fix not yet re-verified on a new video. Instagram Business OAuth still pending; nothing published. YouTube postponed (D-035). HEAD at checkpoint start: `fe984a0`.
+
 > **Final checkpoint (2026-10-17):** Read [CODEX_TO_CLAUDE_HANDOFF.md](CODEX_TO_CLAUDE_HANDOFF.md) first. It supersedes historical status below. Mode B pipeline/UI implemented but live generation fails on fenced model JSON; full editor and YouTube unfinished. Instagram reaches Reel Studio-IG but awaits the separate Business-account login/consent. Never connect/convert the personal account or publish without explicit approval. Production deployed at 7419b77; two new migrations applied. Final backend: 76 pass, 6 skip, 1 known xfail; DB: 52 pass; final frontend build passes. Owner requested checkpoint only, no more features.
 # Deployment
 
@@ -93,3 +95,6 @@ Next: deploy callback/UI, finish authorized Instagram OAuth, verify public media
 
 ### Final main handback
 Main f144e7b337ee0d712d079529efdaf0c2001c51c7 pushed and remotely verified. Production build dpl_J6YEgyj4ro1emy4DGyLYEgDB4Ntw triggered (BUILDING at first check); previous 7419b77 production READY. API remains running with pre-shared-signing-fix imports; restart API and worker together before actual media ingest. See CODEX_TO_CLAUDE_HANDOFF.md for exact process/environment evidence.
+
+## Runtime at checkpoint (2026-10-17)
+Vercel deployment for `fe984a0`: success; `/` 200, `/login` 200, `/dashboard` 307. Production backend :8000 (`app.serve --tunnel devtunnel`) restarted with `fe984a0`, heartbeat fresh at `https://j96sqlp6-8000.inc1.devtunnels.ms`. Local test backend :8001 (local Supabase), web dev :3000 and Ollama serve running. Supabase migrations through `20261017040000_social_publishing` applied (Codex).
