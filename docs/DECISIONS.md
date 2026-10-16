@@ -53,3 +53,8 @@ Format: ID — decision. *Alternatives* · *Why* · *Trade-off*.
 
 ## D-013 — No AI attribution trailers
 The coding harness suggests `Co-Authored-By` trailers; the project owner's explicit rule forbids AI attribution, and owner instructions take precedence. Commits carry only the operator's own identity.
+
+## D-014 — Next.js 16 without `cacheComponents`
+*Alt:* keep the template's `cacheComponents` + partial prefetching.
+*Why:* Nearly every app route reads the Supabase session; with Cache Components each session read must sit behind Suspense or the build fails. Plain dynamic rendering is simpler and sufficient for an authenticated SaaS. Landing page stays static by default.
+*Trade-off:* No static shell for authenticated pages.
