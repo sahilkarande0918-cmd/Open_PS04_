@@ -11,7 +11,7 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
 | Protected routes | ✅ `/dashboard`, `/projects` → 307 `/login?next=…` | curl, session 2 |
 | Vercel env vars | ✅ set by owner (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`) | values not readable by the assistant |
 | Supabase CLI link | ✅ `adjwycjsxtxvjockxtan` (project "reel.studio'org", org `yqdlgjynocbxxsmzeesy`) | `supabase/.temp/project-ref` |
-| Remote migrations | ✅ **6/6 applied** (owner pushes 2026-10-17) | `supabase migration list --linked` |
+| Remote migrations | 🟡 6/7 applied; `20261017010000_brand_kits` pending (owner push) — until then `/brand` on production shows the database error and renders use no branding | `supabase migration list --linked` |
 | Remote schema | ✅ 15 tables, RLS enabled on all 15 | `supabase db dump --linked --schema public,private` (read-only) |
 | Remote grants (anon/authenticated) | ✅ fixed: `anon` 0 table grants; `authenticated` 24 explicit grants, none with TRUNCATE (the earlier anon-TRUNCATE hole on 6 tables is closed) | dump after the push |
 | Remote grants (service_role) | ✅ DML on all tables + EXECUTE on `claim_next_job` / `requeue_stale_jobs` (`20261017000000`); the project uses Supabase's secure-by-default privileges | backend reads/writes; RPC calls succeed; no worker poll failures after 00:16:42 |

@@ -139,6 +139,18 @@ Recording: a 7.5-min Hinglish **physics** class (distance vs displacement), uplo
 | Analyze | ✅ | 1,970 windows scored, 76 OCR frames in 191 s, 11 screen-term fixes, LLM judged 9 / dropped 3, **6 highlights** of 33–46 s |
 | Heartbeat during the run | ✅ | `backend_endpoints` age 5–18 s; earlier `permission denied` lines all predate the service_role grant |
 
+## Phase 04 — brand kits (2026-10-17, local stack, synthetic lecture, test kit "Nimbu Academy (test kit)")
+| Test | Result | Evidence |
+|------|--------|----------|
+| pgTAP (kits isolated, one default per org, colour/logo checks, bob cannot insert) | ✅ 34/34 | `supabase test db` |
+| Zod schema (defaults, bundled fonts only, logo asset must exist) | ✅ 8/8 | `pnpm test` |
+| Python builder/compiler (intro offset, outro, watermark, fonts, presets, cache key, logo decoding) | ✅ 20/20 rendering, 49 API total | `pytest` |
+| Brand editor | ✅ | create kit → colours, Poppins/Fira Code, SVG logo upload, handle, watermark top-left, karaoke → save → reload shows saved values; live preview updates |
+| Branded render through the Export panel (default kit preselected) | ✅ | 1080×1920 30 fps H.264+AAC, **55.867 s vs 2 + 50.85 + 3 = 55.85 s**, rendered in 179 s |
+| Frames | ✅ | 1.2 s intro (logo, bar, title in Poppins); 9 s karaoke (spoken words accent); 45.5 s `AbortController` code chip in Fira Code; 54.5 s outro (logo, CTA, handle) |
+| Audio | ✅ | intro/outro max −91 dB (silent), clip max −6.1 dB |
+| Boxed preset + bottom-right watermark (draft render of the same timeline) | ✅ | panel behind captions, spoken word in accent; watermark backdrop legible over code |
+
 ## Phase 04 — first task (2026-10-16, local stack, synthetic lecture)
 | Test | Result | Evidence |
 |------|--------|----------|

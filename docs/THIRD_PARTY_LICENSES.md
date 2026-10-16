@@ -79,3 +79,4 @@ Test audio: Oriserve model-repo sample clips (Common Voice, CC0) used for local 
 | Archivo (Omnibus-Type), JetBrains Mono (JetBrains) via @fontsource 5.3.0 | SIL OFL 1.1 | Caption fonts bundled into renders; licence texts in `apps/api/app/services/rendering/fonts/` |
 | GSAP 3.14.2 (CDN, inside compositions) | GreenSock standard licence (free, incl. commercial) | Composition timeline |
 | Microsoft Dev Tunnels CLI 1.0.2115 | Microsoft licence terms (free service) | Public HTTPS tunnel to the local backend; installed with winget, not redistributed |
+| Poppins (Indian Type Foundry), Noto Sans (Google), Fira Code (Nikita Prokopov) via @fontsource 5.3.0 | SIL OFL 1.1 | Brand kit fonts, bundled into renders and `apps/web/public/brand-fonts`; licence texts beside the font files |

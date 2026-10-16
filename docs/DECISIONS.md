@@ -104,3 +104,11 @@ Supabase's default privileges gave `authenticated` ALL on public tables, includi
 
 ## D-026 — `render_jobs` doubles as the export asset
 One row per render: the timeline snapshot, its hash (render cache key), status and the verified output (path, size, duration, fps, thumbnail). A separate `export_assets` table waits until one render has several outputs (SRT/VTT, alternate qualities). Progress lives on the linked `jobs` row.
+
+## D-027 — Brand kit logo stored in the row as a data URL
+*Alt:* a private Supabase Storage bucket with storage policies; files on the processing machine.
+*Why:* logos are small; a ≤300 KB `data:image/(png|jpeg|webp|svg+xml);base64,…` value (checked by the DB) needs no bucket, policies or backend, and the brand editor works with the processing machine offline. When a render is requested the API decodes it into the render folder as `logo-<sha256>.<ext>`, so the snapshot keeps the exact logo and a changed logo changes the render cache key. SVG is shown only through `<img>`, which never runs scripts.
+*Upgrade:* move to Storage if kits need larger assets (intro videos, music).
+
+## D-028 — Brand snapshot, intro/outro as cards in the main composition
+Each render copies the chosen kit (default kit, a specific kit, or none) into `timeline.brand`; editing a kit never changes finished reels. Intro and outro are full-frame cards in the same composition (not `data-composition-src` sub-compositions): the clip and captions are offset by the intro length, and GSAP animates the cards. Only bundled OFL fonts (Archivo, Poppins, Noto Sans; JetBrains Mono, Fira Code) are allowed, enforced by Zod, the DB check and the editor. Caption presets: highlight-word, karaoke (words keep the accent once spoken), boxed (solid panel).

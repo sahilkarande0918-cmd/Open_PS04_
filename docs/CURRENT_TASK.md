@@ -10,7 +10,20 @@ Word-by-word captions sit in the safe zone with code terms as monospace chips, a
 shown correctly. A render survived a worker crash (attempt 2), and identical requests reuse the cached
 render. Evidence: `docs/TEST_STATUS.md` → "Phase 04 — first task".
 
-### Next task: brand kits
+### Done (session 2, later): brand kits
+`brand_kits` table (RLS, explicit grants, one default per org, DB-validated colours/fonts/logo), `/brand`
+editor with a live 9:16 preview (intro / clip / outro), kit chooser in the Export panel, snapshot into the
+timeline, intro/outro cards, watermark, three caption presets, bundled OFL fonts. Evidence:
+TEST_STATUS → "Phase 04 — brand kits". Production needs `supabase db push --linked` for
+`20261017010000_brand_kits.sql` (owner).
+
+### Next task: captions export and timing check
+1. SRT and VTT export from the caption track (clip clock, page-sized cues), API `GET /renders/{id}/captions.{srt,vtt}` (signed) + Export panel links.
+2. Caption timing consistency check: compare word starts with audio onsets (energy rise) inside the clip; report median/max drift on the render row and warn in the UI over a threshold.
+3. Vendor GSAP into the render project (copy `gsap.min.js` from a pinned npm install) so renders work offline.
+4. Phase 04 acceptance review against `docs/MASTER_PROMPT.md` Section 19, then mark Phase 04.
+
+### Brand kits (original plan, kept for reference)
 1. Migration `brand_kits`:
    - Columns: `id`, `organization_id`, `name`, `is_default`, `colors {background, text, accent}`, `fonts {body, code}`, `logo_path`, `handle`, `watermark` (bool + position), `caption_preset`, `intro {enabled, duration_s, title}`, `outro {enabled, duration_s, cta}`, timestamps.
    - RLS: members read; editors write.
