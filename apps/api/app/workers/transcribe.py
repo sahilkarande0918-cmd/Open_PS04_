@@ -1,6 +1,7 @@
 """transcribe job: extract audio → faster-whisper → glossary correction → persist."""
 
 import time
+from pathlib import Path
 
 from app.core.db import service_client
 from app.core.storage import recording_dir, source_path
@@ -67,7 +68,7 @@ def _run(ctx: JobContext, db, rec: dict, src) -> dict:
             {
                 "organization_id": rec["organization_id"],
                 "recording_id": rec["id"],
-                "model": f"faster-whisper:{result.model}@{result.device}",
+                "model": f"faster-whisper:{Path(result.model).name}@{result.device}",  # never a local path
                 "language": result.language,
                 "language_probability": result.language_probability,
                 "duration_s": result.duration_s,

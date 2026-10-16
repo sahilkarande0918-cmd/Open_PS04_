@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useProjectJobs } from "@/lib/realtime";
 import { JobProgress } from "./job-progress";
-import { TranscriptView } from "./transcript-view";
+import { Highlights } from "./highlights";
+import { TranscriptView, loadWords } from "./transcript-view";
 import { Uploader } from "./uploader";
 
 type Recording = {
@@ -54,9 +55,10 @@ export function RecordingStudio({ projectId, canEdit }: { projectId: string; can
     qc.invalidateQueries({ queryKey: ["jobs", projectId] });
   };
 
-  const latestJob = jobs.data?.find((j) => j.job_type === "transcribe");
+  const latestJob = jobs.data?.[0];
   const rec = recording.data?.rec;
   const tr = recording.data?.transcript;
+  const words = useQuery({ queryKey: ["words", tr?.id], enabled: !!tr, queryFn: () => loadWords(tr!.id) });
 
   if (recording.isLoading) return <p className="text-muted">Loading…</p>;
 
@@ -79,8 +81,11 @@ export function RecordingStudio({ projectId, canEdit }: { projectId: string; can
           {tr && <div><dt className="inline">Transcript </dt><dd className="inline text-ink">{tr.model} · language {tr.language}</dd></div>}
         </dl>
       )}
-      {rec && latestJob && (latestJob.status !== "succeeded" || !tr) && (
+      {rec && latestJob && latestJob.status !== "succeeded" && (
         <JobProgress job={latestJob} recordingId={rec.id} onChange={refresh} />
+      )}
+      {rec && tr && rec.width && rec.height && (
+        <Highlights recordingId={rec.id} projectId={projectId} srcW={rec.width} srcH={rec.height} canEdit={canEdit} words={words.data ?? []} />
       )}
       {rec && tr && <TranscriptView recordingId={rec.id} transcriptId={tr.id} canEdit={canEdit} />}
     </div>

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { apiFetch, useBackend } from "@/lib/backend";
+import { useMediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 
 type Word = {
@@ -19,7 +19,7 @@ type Word = {
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-async function loadWords(transcriptId: string) {
+export async function loadWords(transcriptId: string) {
   const sb = createClient();
   const all: Word[] = [];
   for (let from = 0; ; from += 1000) {
@@ -36,7 +36,6 @@ async function loadWords(transcriptId: string) {
 }
 
 export function TranscriptView({ recordingId, transcriptId, canEdit }: { recordingId: string; transcriptId: string; canEdit: boolean }) {
-  const backend = useBackend();
   const video = useRef<HTMLVideoElement>(null);
   const [now, setNow] = useState(0);
   const [query, setQuery] = useState("");
@@ -46,18 +45,7 @@ export function TranscriptView({ recordingId, transcriptId, canEdit }: { recordi
   const words = useQuery({ queryKey: ["words", transcriptId], queryFn: () => loadWords(transcriptId) });
   const [local, setLocal] = useState<Record<number, string>>({});
 
-  const base = backend.data?.state === "online" ? backend.data.url : null;
-  const media = useQuery({
-    queryKey: ["media", recordingId, base],
-    enabled: !!base,
-    staleTime: 60 * 60 * 1000,
-    queryFn: async () => {
-      const r = await apiFetch(base!, `/recordings/${recordingId}/media-url`);
-      if (!r.ok) throw new Error("media link refused");
-      return `${base!.replace(/\/$/, "")}${(await r.json()).path}`;
-    },
-  });
-
+  const { url: mediaUrl, base } = useMediaUrl(recordingId);
   const list = useMemo(() => words.data ?? [], [words.data]);
   const segments = useMemo(() => {
     const m = new Map<number, Word[]>();
@@ -105,8 +93,8 @@ export function TranscriptView({ recordingId, transcriptId, canEdit }: { recordi
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <div className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-        {media.data ? (
-          <video ref={video} src={media.data} controls preload="metadata" className="aspect-video w-full rounded-[6px] bg-black" onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
+        {mediaUrl ? (
+          <video ref={video} src={mediaUrl} controls preload="metadata" className="aspect-video w-full rounded-[6px] bg-black" onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center rounded-[6px] bg-surface p-6 text-center text-[14px] text-muted">
             {base ? "Loading video…" : "The original recording plays from the processing backend, which is offline. The transcript below is still available."}
