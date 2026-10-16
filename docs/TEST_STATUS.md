@@ -149,6 +149,7 @@ Recording: a 7.5-min Hinglish **physics** class (distance vs displacement), uplo
 | Branded render through the Export panel (default kit preselected) | ✅ | 1080×1920 30 fps H.264+AAC, **55.867 s vs 2 + 50.85 + 3 = 55.85 s**, rendered in 179 s |
 | Frames | ✅ | 1.2 s intro (logo, bar, title in Poppins); 9 s karaoke (spoken words accent); 45.5 s `AbortController` code chip in Fira Code; 54.5 s outro (logo, CTA, handle) |
 | Audio | ✅ | intro/outro max −91 dB (silent), clip max −6.1 dB |
+| Production migration | ✅ 7/7; brand_kits RLS + explicit grants confirmed by schema dump | `migration list --linked`, `db dump --linked` |
 | Boxed preset + bottom-right watermark (draft render of the same timeline) | ✅ | panel behind captions, spoken word in accent; watermark backdrop legible over code |
 
 ## Phase 04 — first task (2026-10-16, local stack, synthetic lecture)

@@ -14,8 +14,7 @@ render. Evidence: `docs/TEST_STATUS.md` → "Phase 04 — first task".
 `brand_kits` table (RLS, explicit grants, one default per org, DB-validated colours/fonts/logo), `/brand`
 editor with a live 9:16 preview (intro / clip / outro), kit chooser in the Export panel, snapshot into the
 timeline, intro/outro cards, watermark, three caption presets, bundled OFL fonts. Evidence:
-TEST_STATUS → "Phase 04 — brand kits". Production needs `supabase db push --linked` for
-`20261017010000_brand_kits.sql` (owner).
+TEST_STATUS → "Phase 04 — brand kits". Migration live on production (7/7).
 
 ### Next task: captions export and timing check
 1. SRT and VTT export from the caption track (clip clock, page-sized cues), API `GET /renders/{id}/captions.{srt,vtt}` (signed) + Export panel links.
