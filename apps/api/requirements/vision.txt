@@ -1,0 +1,4 @@
+-r ml.txt
+opencv-python-headless==4.*
+scenedetect==0.6.*
+numpy<3

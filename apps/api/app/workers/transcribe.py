@@ -5,7 +5,7 @@ import time
 from app.core.db import service_client
 from app.core.storage import recording_dir, source_path
 from app.services import media
-from app.services.transcription import glossary, whisper
+from app.services.transcription import cleanup, glossary, whisper
 from app.workers.jobs import JobContext, Permanent
 
 BATCH = 500
@@ -58,7 +58,7 @@ def _run(ctx: JobContext, db, rec: dict, src) -> dict:
     ctx.check_cancel()
 
     ctx.stage("correct_terms", 0.9, "Correcting technical vocabulary")
-    words = glossary.correct(result.words, gl)
+    words = cleanup.remove_loops(glossary.correct(result.words, gl))
 
     ctx.stage("save", 0.94, "Saving transcript")
     tr = (
