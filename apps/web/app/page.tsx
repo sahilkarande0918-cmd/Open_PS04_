@@ -1,69 +1,146 @@
 import Image from "next/image";
+import Link from "next/link";
+import { CropDemo } from "@/components/landing/crop-demo";
+import { Features } from "@/components/landing/features";
+import { Reveal } from "@/components/landing/reveal";
+import { Stages } from "@/components/landing/stages";
+import { TranscriptStates } from "@/components/landing/transcript-states";
 
-export default function Home() {
+export default function Landing() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="flex-1">
+      <Reveal />
+      {/* Hero: two tones meeting at 50%; the product's own control on the right. */}
+      <section className="grid min-h-svh md:grid-cols-2">
+        <div className="order-2 flex flex-col bg-bg px-5 py-10 md:order-1 md:px-10">
+          <span className="hidden text-[17px] font-semibold md:block">Reel Studio</span>
+          <div className="mt-auto max-w-[46ch]">
+            <h1 className="lines text-[clamp(30px,6.4vw,40px)] leading-[1.04] tracking-[-0.02em] md:text-[32px]">
+              <span className="line">
+                <span data-line style={{ "--i": 0 } as React.CSSProperties}>
+                  Your classes,
+                </span>
+              </span>
+              <span className="line">
+                <span data-line style={{ "--i": 1 } as React.CSSProperties}>
+                  cut into reels.
+                </span>
+              </span>
+            </h1>
+            <div data-after-lines>
+              <p className="mt-5 text-[17px] leading-relaxed text-muted">
+                Reel Studio finds the 30 to 60 second moments in a recorded class, keeps the code readable in 9:16, and
+                spells <code className="font-mono text-[16px] text-ink">useEffect</code> the way you typed it.
+              </p>
+              <Link
+                href="/signup"
+                className="mt-7 inline-block bg-ink px-5 py-3 text-[17px] font-semibold text-bg transition-transform hover:bg-white active:scale-[0.98]"
+              >
+                Start a free studio
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="relative order-1 flex min-h-[58svh] items-center justify-center bg-surface px-5 py-16 md:order-2 md:px-10">
+          <span className="absolute left-5 top-5 text-[17px] font-semibold md:hidden">Reel Studio</span>
+          <Link href="/login" className="absolute right-5 top-5 text-[17px] text-ink hover:text-accent md:right-10 md:top-10">
+            Sign in
+          </Link>
+          <CropDemo />
+        </div>
+      </section>
+
+
+      {/* The old way: real editing benches, the literal reels. */}
+      <section className="grid gap-6 px-5 pt-36 md:grid-cols-12 md:px-10 md:pt-52">
+        <div className="md:col-span-5 md:flex md:flex-col">
+          <p data-reveal className="max-w-[20ch] text-[22px] leading-[1.3] lg:text-[32px]">
+            Cutting one good minute used to take an afternoon at the bench.
           </p>
+          <p data-reveal style={{ "--d": 1 } as React.CSSProperties} className="mt-5 max-w-[42ch] text-[17px] leading-relaxed text-muted">
+            Most institutes record every class and publish none of it, because nobody has those afternoons. Reel Studio
+            does the bench work: it watches the recording, listens to the instructor and proposes the cuts.
+          </p>
+          <div className="mt-10 grid grid-cols-3 gap-3 md:mt-auto">
+            {[
+              ["/archive/16-and-35-mm-synchronizer-sybzb-b.jpg", "A 16 and 35 mm film synchronizer"],
+              ["/archive/moviola-16mm-sound-editing-board.jpg", "A Moviola 16 mm sound editing board"],
+              ["/archive/moviola-2.jpg", "A Moviola film viewer"],
+            ].map(([src, alt], i) => (
+              <div key={src} data-reveal style={{ "--d": i + 2 } as React.CSSProperties} className="relative aspect-[4/5] overflow-hidden">
+                <Image src={src} alt={alt} fill sizes="(min-width: 768px) 14vw, 30vw" className="object-cover" />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div data-reveal className="relative aspect-[3/4] overflow-hidden md:col-span-6 md:col-start-7">
+          <Image
+            src="/archive/moviola-35mm.jpg"
+            alt="A Moviola 35 mm editing machine with two film reels"
+            fill
+            sizes="(min-width: 768px) 46vw, 100vw"
+            className="object-cover"
+          />
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="px-5 pt-36 md:px-10 md:pt-52">
+        <div className="md:grid md:grid-cols-12 md:gap-6">
+          <h2 data-reveal className="mb-16 text-[22px] leading-tight md:col-span-6 md:col-start-4 md:text-[32px]">Hinglish, spelled right</h2>
+        </div>
+        <TranscriptStates />
+      </section>
+
+      <section className="px-5 pt-36 md:pl-[22%] md:pr-10 md:pt-52">
+        <h2 data-reveal className="mb-16 text-[22px] leading-tight md:text-[32px]">What it does with a class</h2>
+        <Features />
+      </section>
+
+      <div className="pt-36 md:pt-52">
+        <Stages />
+      </div>
+
+      <section className="mt-36 bg-surface px-5 py-28 md:mt-52 md:px-10 md:py-40">
+        <form action="/signup" method="get" className="max-w-[22em] text-[22px] leading-[1.35] md:text-[32px]">
+          <label htmlFor="cta-email">Open a free studio for</label>{" "}
+          <input
+            id="cta-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@institute.in"
+            className="my-1 inline-block h-[1.35em] w-full bg-bg px-[0.3em] align-baseline text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent md:w-[9em]"
+          />{" "}
+          <button
+            type="submit"
+            className="h-[1.35em] bg-accent px-[0.35em] font-semibold text-accent-ink transition-transform hover:brightness-110 active:scale-[0.98]"
+          >
+            today
+          </button>
+        </form>
+        <p className="mt-5 text-[17px] text-muted">You will set a password next. The free plan needs no card.</p>
+      </section>
+
+      <footer className="mt-[18svh] grid gap-2 px-5 pb-7 text-[14px] text-muted md:grid-cols-[1fr_auto_1fr] md:items-baseline md:px-10">
+        <span>AI video studio for technical educators</span>
+        <nav className="flex flex-wrap gap-6 text-ink">
+          <a href="https://github.com/sahilkarande0918-cmd/Reel-Studio" className="hover:text-accent">
+            Source on GitHub
+          </a>
+          <Link href="/login" className="hover:text-accent">
+            Sign in
+          </Link>
+        </nav>
+        <span className="md:text-right">2026 · Open source, MIT</span>
+        <p className="text-[14px] md:col-span-3">
+          Pictures:{" "}
+          <a className="underline" href="https://commons.wikimedia.org/w/index.php?curid=113118159">Moviola 35mm</a> by Èric Gonzalez Torres,{" "}
+          <a className="underline" href="https://commons.wikimedia.org/w/index.php?curid=125312351">16 and 35 mm synchronizer</a>,{" "}
+          <a className="underline" href="https://commons.wikimedia.org/w/index.php?curid=57471442">Moviola 16mm Sound Editing Board</a> by Tangerineduel (all CC BY-SA 4.0);{" "}
+          <a className="underline" href="https://commons.wikimedia.org/w/index.php?curid=45302939">Moviola 2</a> by Assianir (CC BY-SA 3.0); via Wikimedia Commons.
+        </p>
+      </footer>
+    </main>
   );
 }
