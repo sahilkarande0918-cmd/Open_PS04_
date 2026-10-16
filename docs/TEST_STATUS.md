@@ -206,3 +206,15 @@ Next: deploy callback/UI, finish authorized Instagram OAuth, verify public media
 
 ### Final handoff verification (2026-10-17)
 Backend: 76 passed, 6 integration skipped, 1 strict xfail for the reproduced live fenced-JSON generation bug; Ruff pass. Frontend ESLint/typecheck pass; 9 timeline tests and 4 API-error tests pass. Latest direct Next production build passes after frontend fixes. Local database 52 pgTAP tests pass. No new MP4 was generated; no ffprobe success claimed. Final secret scan pass; main push and clean tree verified at f144e7b. No Instagram consent/token, real publish or real metrics verified.
+
+## Phase 05 — Mode B live (2026-10-17, local stack, UI job)
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Root cause of "Invalid JSON" | ✅ found | Ollama 0.30.6 ignores `format` when the schema has `$ref` or min/max length keywords (bisected); now sent inlined and without length keywords, Pydantic still enforces them |
+| Fenced replies | ✅ | single full-reply fence unwrapped; prose / two blocks / unterminated still rejected (8 cases) |
+| Narration alignment | ✅ | stray recognised word ("forward") and "jaison" mishearing no longer fail a scene; <85 % recognised still rejected |
+| "JSON vs XML" via Topic Studio | ✅ | storyboard 5 scenes (json/xml), Kokoro narration, render; ffprobe 1080×1920 30 fps H.264+AAC **46.77 s**, 2.5 MB; audio peak −2.5 dB |
+| UI | ✅ | inline player plays (1080×1920, 46.77 s); Download MP4 → 200; SRT/VTT buttons present |
+| Frames | ✅ / ⚠️ | brand watermark, code cards, karaoke captions, outro. Code card enlarged to 46 px code after review; 4 of 5 scenes reused one JSON object → prompt now asks for progressing examples (not yet re-verified live) |
+| Backend suite | ✅ | pytest 88 passed, 6 skipped; ruff clean |
+

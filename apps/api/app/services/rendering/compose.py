@@ -306,13 +306,14 @@ def compile_html(doc: dict) -> str:
       .cam video {{ display: block; width: 100%; height: 100%; }}
       .text-overlay {{ position: absolute; max-width: calc(100% - 160px); white-space: pre-wrap;
                          font: {bw} 64px/1.2 "{body_font}", sans-serif; }}
-      .code-panel {{ position: absolute; left: 64px; right: 64px; top: 380px; max-height: 880px;
-                      border: 2px solid {rgba(accent, 0.3)}; border-radius: 28px; padding: 32px;
-                      background: {rgba(text, 0.045)}; overflow: hidden; color: {text}; }}
-      .code-panel header {{ display: flex; justify-content: space-between; align-items: center; gap: 20px;
-                           font: {bw} 38px/1.3 "{body_font}", sans-serif; margin-bottom: 32px; }}
-      .code-panel small {{ font-size: 24px; color: {accent}; }}
-      .code-panel pre {{ font: {cw} 32px/1.55 "{code_font}", monospace; white-space: pre-wrap;
+      .code-panel {{ position: absolute; left: 56px; right: 56px; top: 300px; height: 900px; box-sizing: border-box;
+                      display: flex; flex-direction: column; justify-content: center;
+                      border: 3px solid {rgba(accent, 0.35)}; border-radius: 36px; padding: 56px 52px;
+                      background: {rgba(text, 0.05)}; overflow: hidden; color: {text}; }}
+      .code-panel header {{ display: flex; justify-content: space-between; align-items: center; gap: 24px;
+                           font: {bw} 54px/1.2 "{body_font}", sans-serif; margin-bottom: 48px; }}
+      .code-panel small {{ font-size: 32px; color: {accent}; text-transform: uppercase; letter-spacing: 0.08em; }}
+      .code-panel pre {{ font: {cw} 46px/1.5 "{code_font}", monospace; white-space: pre-wrap;
                          overflow-wrap: anywhere; margin: 0; tab-size: 2; }}
       .tok-string {{ color: #a7e3bc; }} .tok-number {{ color: #f0c488; }}
       .tok-keyword, .tok-tag {{ color: #e9b5a5; }} .tok-comment {{ color: #9aa6a1; }}

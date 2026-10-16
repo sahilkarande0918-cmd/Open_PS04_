@@ -6,6 +6,8 @@
 > 5. Phase 08: real Instagram analytics and AI performance feedback.
 > 6. Phase 09: end-to-end testing, fixes and submission.
 >
+> **Status:** Phase 05 Mode B works end to end via the UI (JSON vs XML → 46.8 s 1080×1920 MP4, TEST_STATUS). Next: UI redesign, then the Phase 06 editor.
+>
 > **YouTube is postponed** (no OAuth, API setup, Shorts publishing or analytics) until the owner asks. Billing,
 > complex admin features and non-essential optimisation are postponed. ORIGINAL_PS.md and MASTER_PROMPT.md are
 > unchanged; this is a delivery-order decision (D-035). Keep moving without approval for routine work; ask only
