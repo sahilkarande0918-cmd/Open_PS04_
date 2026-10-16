@@ -76,3 +76,8 @@ Go through `docs/MASTER_PROMPT.md` Section 19 Phase 04 acceptance line by line a
 1. `pnpm exec supabase db push --linked` (5 migrations incl. the grants security fix), then Auth URL config and the email-confirmation decision (DEPLOYMENT.md).
 2. Owner writes the Reel-Studio `SUPABASE_URL` + secret into `apps/api/.env`, restarts `python -m app.serve --tunnel devtunnel`, and runs the production E2E (signup, workspace, project, refresh, upload, second account cannot see data).
 3. Teammate `Atharva486dherange` has not accepted the GitHub invitation.
+
+
+## CODEx TAKEOVER — 2026-10-17 (current owner priority)
+
+For a time-limited Codex session, [docs/CODEX_HANDOFF.md](CODEX_HANDOFF.md) supersedes the **sequence of upcoming work only**, not verified implementation, the original problem statement or security invariants. Start by inspecting git status and the latest commits; then develop Phase 05 topic-to-video to actual rendered MP4, improve user-facing UI using the **structure** (not theme/colors/fake metrics) of the owner's four screenshots, implement Phase 06 multi-track editor, Phase 07 real social authorization/upload/scheduling, Phase 08 analytics/feedback. Defer subscriptions/checkout and nonessential hardening/polish until working PS flows are integrated. Original older task notes above are historical, not instructions to repeat Phase 04. Update these docs after your current-turn tests.
