@@ -120,6 +120,99 @@ class Glossary:
         return " ".join(sorted(set(self.variants.values()))[:120])
 
 
+SCREEN_WINDOW_S = 30.0
+SCREEN_RATIO = 0.86
+# A merged span may not start with a function word: "se data" (= "from data") must not become setData.
+# ponytail: fixed stop-list; a real POS tagger for Hinglish would be the upgrade path.
+_SPAN_STOP = {
+    "se",
+    "ka",
+    "ki",
+    "ke",
+    "ko",
+    "to",
+    "toh",
+    "hai",
+    "aur",
+    "mein",
+    "pe",
+    "par",
+    "ek",
+    "the",
+    "a",
+    "an",
+    "and",
+    "of",
+    "in",
+    "on",
+    "is",
+    "it",
+    "ya",
+    "na",
+    "bhi",
+    "jo",
+    "ab",
+}
+
+
+def correct_with_screen(words: list[dict], seen: list[tuple[float, str]]) -> list[dict]:
+    """Fix mishearings of identifiers that were visibly on screen near the time they were spoken.
+
+    "about controller" -> "AbortController" only if AbortController was OCR'd on screen within
+    SCREEN_WINDOW_S of the words. Evidence (frame time) is stored on the word. User edits win.
+    """
+    out = [{**w, "metadata": dict(w.get("metadata") or {})} for w in words]
+    keys = ["".join(ch for ch in w["raw_text"].lower() if ch.isalnum()) for w in out]
+    i = 0
+    while i < len(out):
+        if out[i]["metadata"].get("edited") or "correction" in out[i]["metadata"]:
+            i += 1
+            continue
+        t = out[i]["start_s"]
+        near = {tok for ts, tok in seen if abs(ts - t) <= SCREEN_WINDOW_S}
+        best = None
+        for n in (3, 2, 1):
+            span = keys[i : i + n]
+            if (
+                len(span) < n
+                or not all(span)
+                or any(out[j]["metadata"].get("edited") for j in range(i, i + n))
+            ):
+                continue
+            if n > 1 and span[0] in _SPAN_STOP:
+                continue
+            phrase = "".join(span)
+            for tok in near:
+                target = "".join(ch for ch in tok.lower() if ch.isalnum())
+                r = SequenceMatcher(None, phrase, target).ratio()
+                # the tighter span (without the first word) must not match as well, or the first word is extra
+                if n > 1 and SequenceMatcher(None, "".join(span[1:]), target).ratio() >= r:
+                    continue
+                if r >= SCREEN_RATIO and (best is None or r > best[2]):
+                    best = (n, tok, r)
+        if best and not (best[0] == 1 and out[i]["corrected_text"].strip(".,?!") == best[1]):
+            n, tok, r = best
+            trailing = re.search(r"[,.?!:;]+$", out[i + n - 1]["raw_text"].strip())
+            evidence = min((ts for ts, tk in seen if tk == tok), key=lambda ts: abs(ts - t))
+            out[i]["corrected_text"] = tok + (trailing.group(0) if trailing else "")
+            out[i]["metadata"]["correction"] = {
+                "source": "screen-ocr",
+                "term": tok,
+                "span": n,
+                "ratio": round(r, 3),
+                "frame_s": evidence,
+            }
+            if n > 1:
+                out[i]["end_s"] = out[i + n - 1]["end_s"]
+                for j in range(i + 1, i + n):
+                    out[j]["corrected_text"] = ""
+                    out[j]["metadata"]["merged_into"] = out[i]["idx"]
+            i += n
+        else:
+            i += 1
+    return out
+
+
 def correct(words: list[dict], glossary: Glossary) -> list[dict]:
     """Return words with `corrected_text` and `metadata` set. Multi-word matches collapse into the first
     word of the span (its timing is extended to the span end); the others get corrected_text ''."""

@@ -180,6 +180,42 @@ def retranscribe(rec_id: str, user: User = Depends(current_user)) -> dict:
     return {"job_id": job["id"]}
 
 
+@router.post("/{rec_id}/analyze")
+def reanalyze(rec_id: str, user: User = Depends(current_user)) -> dict:
+    """Re-run highlight detection and reframing (keeps selected highlights)."""
+    rec = get_owned("source_recordings", rec_id, user, write=True)
+    if rec["status"] != "ready":
+        raise HTTPException(409, "Transcribe the recording first")
+    db = service_client()
+    active = (
+        db.table("jobs")
+        .select("id")
+        .eq("job_type", "analyze")
+        .contains("payload", {"recording_id": rec_id})
+        .in_("status", ["queued", "running"])
+        .execute()
+        .data
+    )
+    if active:
+        return {"job_id": active[0]["id"]}
+    job = (
+        db.table("jobs")
+        .insert(
+            {
+                "organization_id": rec["organization_id"],
+                "project_id": rec["project_id"],
+                "job_type": "analyze",
+                "payload": {"recording_id": rec_id},
+                "created_by": user.id,
+                "current_stage": "queued",
+            }
+        )
+        .execute()
+        .data[0]
+    )
+    return {"job_id": job["id"]}
+
+
 def _sign(rec_id: str, exp: int) -> str:
     return hmac.new(_MEDIA_KEY, f"{rec_id}:{exp}".encode(), hashlib.sha256).hexdigest()
 

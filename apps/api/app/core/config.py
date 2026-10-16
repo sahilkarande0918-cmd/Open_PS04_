@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     data_dir: Path = Path("./data")
     ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5vl:7b"
     public_api_url: str = ""
     whisper_model: str = "large-v3-turbo"  # or a path to a converted CTranslate2 model directory
     whisper_device: str = "cuda"

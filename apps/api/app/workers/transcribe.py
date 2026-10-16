@@ -88,6 +88,15 @@ def _run(ctx: JobContext, db, rec: dict, src) -> dict:
         db.table("transcript_words").insert(words[i : i + BATCH]).execute()
     db.table("source_recordings").update({"status": "ready"}).eq("id", rec["id"]).execute()
     db.table("projects").update({"status": "transcribed"}).eq("id", rec["project_id"]).execute()
+    db.table("jobs").insert(
+        {  # Phase 03 analysis follows automatically
+            "organization_id": rec["organization_id"],
+            "project_id": rec["project_id"],
+            "job_type": "analyze",
+            "payload": {"recording_id": rec["id"]},
+            "current_stage": "queued",
+        }
+    ).execute()
     corrected = sum(1 for w in words if "correction" in w["metadata"])
     return {
         "transcript_id": tr["id"],
