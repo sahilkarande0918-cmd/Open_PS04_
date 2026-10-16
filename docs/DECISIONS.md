@@ -59,3 +59,15 @@ The coding harness suggests `Co-Authored-By` trailers; the project owner's expli
 *Alt:* keep the template's `cacheComponents` + partial prefetching.
 *Why:* Nearly every app route reads the Supabase session; with Cache Components each session read must sit behind Suspense or the build fails. Plain dynamic rendering is simpler and sufficient for an authenticated SaaS. Landing page stays static by default.
 *Trade-off:* No static shell for authenticated pages.
+
+## D-015 — ASR model: Oriserve Whisper-Hindi2Hinglish-Apex via faster-whisper
+*Alt:* stock Whisper large-v3 / large-v3-turbo; Hub84's pre-converted CT2 copy.
+*Why:* Stock Whisper writes Hindi in Devanagari (or translates it to English when forced to `en`), neither of which is how Indian educators caption reels. Apex (Apache-2.0, fine-tuned from large-v3-turbo on ~700 h of Indian-accented Hindi) transcribes to Roman-script Hinglish and reports much lower WER than large-v3 on Hinglish-transliterated references (model card: FLEURS 29.8 vs 50.8). Turbo base keeps it fast and inside 8 GB. We convert the official safetensors ourselves (`scripts/convert-hinglish-model.sh`) rather than trust an unverified third-party conversion.
+*Trade-off:* Model-card numbers are the authors'; our own spot checks are recorded in TEST_STATUS. `task="transcribe"` always, never translate.
+
+## D-016 — Word timing: faster-whisper cross-attention timestamps; WhisperX alignment deferred
+*Why:* WhisperX aligns with a per-language wav2vec2 phoneme model. Its Hindi models expect Devanagari, so they cannot align Roman-script Hinglish text, which is our main case. faster-whisper's word timestamps (DTW over cross-attention) are available for every language. WhisperX would also add a ~3 GB CUDA PyTorch install for Blackwell (cu128).
+*Plan:* Optional WhisperX stage for English-language recordings only, if time permits. `transcripts.word_timing` records which method produced the timings. Not implemented yet; the PS's word-level timing requirement is met by faster-whisper.
+
+## D-017 — Blackwell (RTX 5050, sm_120) runs CTranslate2 through JIT
+Measured: the first GPU transcription took 275 s for a 28 s clip (kernel JIT compilation); later runs took 1.35 s with `base`. `CUDA_CACHE_MAXSIZE` is raised to 4 GB so compiled kernels persist across worker restarts. Warm up the worker before a demo.
