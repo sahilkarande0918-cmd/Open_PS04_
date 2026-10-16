@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban, LayoutDashboard, LogOut } from "lucide-react";
+import { BookA, FolderKanban, LayoutDashboard, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/(auth)/actions";
@@ -12,6 +12,7 @@ import { BackendBadge } from "./backend-badge";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/glossary", label: "Glossary", icon: BookA },
 ];
 
 export function Sidebar({ orgs, org, email }: { orgs: Org[]; org: Org; email: string }) {
