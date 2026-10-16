@@ -8,6 +8,16 @@ export type BackendStatus =
   | { state: "offline"; reason: string };
 
 const STALE_MS = 90_000;
+/** Dev Tunnels shows an HTML interstitial to browser requests unless this header is sent. */
+const TUNNEL_HEADERS = { "X-Tunnel-Skip-AntiPhishing-Page": "true" };
+/** On the machine running the backend, networks that intercept TLS (e.g. Fortinet) break the tunnel. */
+const SAME_MACHINE = "http://127.0.0.1:8000";
+
+async function health(url: string) {
+  const r = await fetch(`${url.replace(/\/$/, "")}/health`, { headers: TUNNEL_HEADERS, signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error(`Health check returned ${r.status}.`);
+  return (await r.json()).capabilities ?? {};
+}
 
 /** Finds the local processing API: explicit env override, else the URL it last heartbeated to Supabase. */
 async function discover(): Promise<BackendStatus> {
@@ -24,14 +34,14 @@ async function discover(): Promise<BackendStatus> {
       return { state: "offline", reason: `Last seen ${new Date(data.last_seen_at).toLocaleString()}.` };
     url = data.url;
   }
-  try {
-    const r = await fetch(`${url.replace(/\/$/, "")}/health`, { signal: AbortSignal.timeout(6000) });
-    if (!r.ok) return { state: "offline", reason: `Health check returned ${r.status}.` };
-    const body = await r.json();
-    return { state: "online", url, capabilities: body.capabilities ?? {} };
-  } catch {
-    return { state: "offline", reason: "Health check did not respond." };
+  for (const candidate of url === SAME_MACHINE ? [url] : [url, SAME_MACHINE]) {
+    try {
+      return { state: "online", url: candidate, capabilities: await health(candidate) };
+    } catch {
+      // try the next route
+    }
   }
+  return { state: "offline", reason: "Health check did not respond." };
 }
 
 export function useBackend() {
@@ -45,5 +55,6 @@ export async function apiFetch(base: string, path: string, init: RequestInit = {
   if (!token) throw new Error("Not signed in");
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
+  headers.set("X-Tunnel-Skip-AntiPhishing-Page", "true");
   return fetch(`${base.replace(/\/$/, "")}${path}`, { ...init, headers });
 }

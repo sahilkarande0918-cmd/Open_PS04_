@@ -1,7 +1,8 @@
-"""Run the local processing stack: Cloudflare quick tunnel + API (+ worker).
+"""Run the local processing stack: public HTTPS tunnel + API (+ worker).
 
-    python -m app.serve                     # Cloudflare quick tunnel + API + worker
-    python -m app.serve --tunnel tailscale  # Tailscale Funnel (stable URL, port 443 only)
+    python -m app.serve --tunnel devtunnel  # Microsoft Dev Tunnels (stable URL, 443 only; works behind Fortinet)
+    python -m app.serve                     # Cloudflare quick tunnel (needs outbound 7844)
+    python -m app.serve --tunnel tailscale  # Tailscale Funnel (needs controlplane + DERP reachable)
     python -m app.serve --tunnel none
 
 A quick tunnel is free and needs no account, but its URL changes on every start. The API heartbeats
@@ -69,16 +70,58 @@ def start_funnel(port: int) -> tuple[subprocess.Popen, str]:
     return subprocess.Popen([ts, "funnel", str(port)]), url
 
 
+DEVTUNNEL_URL_RE = re.compile(r"https://[a-z0-9-]+\.[a-z0-9]+\.devtunnels\.ms")
+DEVTUNNEL_ID = "reel-studio"
+
+
+def find_devtunnel() -> str:
+    found = shutil.which("devtunnel") or next(
+        Path(os.environ.get("LOCALAPPDATA", "")).glob(
+            "Microsoft/WinGet/Packages/Microsoft.devtunnel_*/devtunnel.exe"
+        ),
+        None,
+    )
+    if not found:
+        sys.exit(
+            "devtunnel not found. Install it: winget install Microsoft.devtunnel, then `devtunnel user login -g -d`"
+        )
+    return str(found)
+
+
+def start_devtunnel(port: int) -> tuple[subprocess.Popen, str]:
+    """Persistent named dev tunnel: same URL every start. Anonymous relay access is required so the
+    browser can call it; every API route still demands a Supabase JWT (the real gate)."""
+    dt = find_devtunnel()
+    run = lambda *a: subprocess.run([dt, *a], capture_output=True, text=True)  # noqa: E731
+    if run("show", DEVTUNNEL_ID).returncode != 0:
+        r = run("create", DEVTUNNEL_ID, "--allow-anonymous")
+        if r.returncode != 0:
+            sys.exit(
+                f"devtunnel create failed (logged in? `devtunnel user login -g -d`):\n{r.stdout}{r.stderr}"
+            )
+    run("port", "create", DEVTUNNEL_ID, "-p", str(port), "--protocol", "http")  # no-op if it exists
+    # the URL is fixed per tunnel+port; read it from `show` (host output is buffered when piped)
+    urls = [u for u in DEVTUNNEL_URL_RE.findall(run("show", DEVTUNNEL_ID).stdout) if f"-{port}." in u]
+    if not urls:
+        sys.exit(f"devtunnel has no URL for port {port}")
+    return subprocess.Popen(
+        [dt, "host", DEVTUNNEL_ID], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+    ), urls[0]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8000)
-    ap.add_argument("--tunnel", choices=["cloudflare", "tailscale", "none"], default="cloudflare")
+    ap.add_argument(
+        "--tunnel", choices=["cloudflare", "devtunnel", "tailscale", "none"], default="cloudflare"
+    )
     ap.add_argument("--no-worker", action="store_true")
     args = ap.parse_args()
 
     procs: list[subprocess.Popen] = []
     if args.tunnel != "none":
-        tunnel, url = (start_tunnel if args.tunnel == "cloudflare" else start_funnel)(args.port)
+        starter = {"cloudflare": start_tunnel, "devtunnel": start_devtunnel, "tailscale": start_funnel}
+        tunnel, url = starter[args.tunnel](args.port)
         procs.append(tunnel)
         os.environ["PUBLIC_API_URL"] = url
         print(f"Tunnel: {url}", flush=True)

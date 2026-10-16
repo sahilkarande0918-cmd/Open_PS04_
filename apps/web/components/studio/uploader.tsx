@@ -34,7 +34,7 @@ export function Uploader({ projectId, onDone }: { projectId: string; onDone: () 
       const key = resumeKey(projectId, file);
       let id = localStorage.getItem(key);
       let sent = 0;
-      let chunk = 16 * 1024 * 1024;
+      let chunk = 8 * 1024 * 1024; // matches the API's CHUNK_MAX
       if (id) {
         const r = await apiFetch(base, `/recordings/${id}`);
         if (r.ok && (await r.clone().json()).status === "uploading") sent = (await r.json()).received_bytes;
