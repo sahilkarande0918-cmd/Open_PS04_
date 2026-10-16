@@ -8,7 +8,7 @@ import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from app.core import signing
@@ -17,7 +17,7 @@ from app.core.auth import User, current_user
 from app.core.config import get_settings
 from app.core.db import service_client, transcript_words
 from app.core.storage import render_dir
-from app.services.rendering import timeline
+from app.services.rendering import captions, timeline
 
 router = APIRouter()
 FILES = {"video": "output_path", "thumb": "thumbnail_path"}
@@ -151,3 +151,17 @@ def render_file(
         raise HTTPException(404, "Not found")
     name = f"reel-{render_id[:8]}.mp4" if download and kind == "video" else None
     return FileResponse(path, filename=name)
+
+
+@router.get("/renders/{render_id}/captions")
+def render_captions(
+    render_id: str, format: Literal["srt", "vtt"] = "srt", user: User = Depends(current_user)
+):
+    """Subtitles for the exported MP4 (same cues as the burned-in captions, intro offset included)."""
+    r = get_owned("render_jobs", render_id, user, columns="id, organization_id, timeline")
+    body = captions.srt(r["timeline"]) if format == "srt" else captions.vtt(r["timeline"])
+    return PlainTextResponse(
+        body,
+        media_type="text/vtt" if format == "vtt" else "application/x-subrip",
+        headers={"Content-Disposition": f'attachment; filename="reel-{render_id[:8]}.{format}"'},
+    )

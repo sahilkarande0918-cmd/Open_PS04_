@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 
 FONTS_DIR = Path(__file__).with_name("fonts")
-GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"
+GSAP_FILE = Path(__file__).with_name("vendor") / "gsap.min.js"  # GSAP 3.14.2, bundled so renders work offline
 PANEL_CENTER = 0.4  # panel centre as a fraction of frame height (clear of the caption zone)
 PAGE_GAP_S = 0.7  # a pause this long starts a new caption page
 LINGER_S = 0.5  # a page stays this long after its last word when speech pauses
@@ -201,7 +201,7 @@ def compile_html(doc: dict) -> str:
     <meta charset="UTF-8" />
     <meta name="viewport" content="width={w}, height={h}" />
     <title>{html.escape(doc["id"])}</title>
-    <script src="{GSAP_URL}"></script>
+    <script src="gsap.min.js"></script>
     <style>
 {fonts_css}
       html, body {{ margin: 0; background: {bg}; }}
@@ -293,6 +293,7 @@ def write_project(doc: dict, project_dir: Path) -> Path:
     for family in dict.fromkeys(doc["brand"]["fonts"].values()):
         name = FONT_FILES[family][0]
         shutil.copyfile(FONTS_DIR / name, project_dir / "fonts" / name)
+    shutil.copyfile(GSAP_FILE, project_dir / GSAP_FILE.name)
     (project_dir / "timeline.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
     index = project_dir / "index.html"
     index.write_text(compile_html(doc), encoding="utf-8")

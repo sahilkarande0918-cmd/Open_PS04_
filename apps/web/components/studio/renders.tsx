@@ -16,8 +16,10 @@ type Render = {
   render_s: number | null;
   error: string | null;
   created_at: string;
-  job: { progress: number; current_stage: string | null; status: string } | null;
+  job: { progress: number; current_stage: string | null; status: string; result: { timing?: Timing } | null } | null;
 };
+
+type Timing = { ok: boolean | null; audio_offset_ms?: number; words_on_speech?: number; words?: number; error?: string };
 
 const STAGES: Record<string, string> = {
   queued: "Waiting for the processing machine",
@@ -25,6 +27,7 @@ const STAGES: Record<string, string> = {
   lint: "Checking the composition",
   render: "Rendering frames",
   verify: "Verifying the MP4",
+  sync_check: "Checking caption and audio timing",
 };
 const QUALITY = { draft: "Draft (fast)", looks: "Standard", delivery: "Delivery (best)" } as const;
 
@@ -56,7 +59,7 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
     queryFn: async () => {
       const { data, error } = await createClient()
         .from("render_jobs")
-        .select("id, status, quality, job_id, duration_s, size_bytes, render_s, error, created_at, job:jobs(progress, current_stage, status)")
+        .select("id, status, quality, job_id, duration_s, size_bytes, render_s, error, created_at, job:jobs(progress, current_stage, status, result)")
         .eq("highlight_id", highlightId)
         .order("created_at", { ascending: false })
         .limit(3);
@@ -102,8 +105,8 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
   }
 
   // fetch + blob instead of a link: a navigation through a dev tunnel gets its interstitial page
-  async function download(url: string, name: string) {
-    const r = await fetch(url, { headers: { "X-Tunnel-Skip-AntiPhishing-Page": "true" } }).catch(() => null);
+  async function download(request: Promise<Response>, name: string) {
+    const r = await request.catch(() => null);
     if (!r?.ok) return setError("Download failed. Is the processing backend online?");
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await r.blob()), download: name });
     a.click();
@@ -170,14 +173,35 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
               {latest.render_s ? ` · rendered in ${Math.round(latest.render_s)} s` : ""}
             </p>
             {urls.data && (
-              <button type="button" onClick={() => download(urls.data.download, `reel-${latest.id.slice(0, 8)}.mp4`)}
-                className="inline-flex items-center gap-1.5 rounded-[4px] bg-surface-3 px-3 py-1.5 hover:bg-surface-2">
-                <Download size={14} aria-hidden /> Download MP4
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => download(fetch(urls.data.download, { headers: { "X-Tunnel-Skip-AntiPhishing-Page": "true" } }), `reel-${latest.id.slice(0, 8)}.mp4`)}
+                  className="inline-flex items-center gap-1.5 rounded-[4px] bg-surface-3 px-3 py-1.5 hover:bg-surface-2">
+                  <Download size={14} aria-hidden /> Download MP4
+                </button>
+                {(["srt", "vtt"] as const).map((f) => (
+                  <button key={f} type="button" onClick={() => download(apiFetch(base!, `/renders/${latest.id}/captions?format=${f}`), `reel-${latest.id.slice(0, 8)}.${f}`)}
+                    className="rounded-[4px] bg-surface-3 px-3 py-1.5 uppercase hover:bg-surface-2">
+                    {f}
+                  </button>
+                ))}
+              </div>
             )}
+            <TimingNote timing={latest.job?.result?.timing} />
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function TimingNote({ timing }: { timing?: Timing }) {
+  if (!timing) return null;
+  if (timing.ok === null) return <p className="text-[13px] text-muted">Timing check could not run: {timing.error}</p>;
+  const pct = Math.round((timing.words_on_speech ?? 0) * 100);
+  return (
+    <p className={`max-w-[46ch] text-[13px] ${timing.ok ? "text-muted" : "text-danger"}`}>
+      {timing.ok ? "Timing check passed" : "Timing check: review before publishing"} · audio offset {timing.audio_offset_ms} ms vs the
+      source · {pct}% of {timing.words} caption words fall on speech
+    </p>
   );
 }

@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.core.db import service_client
 from app.core.storage import render_dir, source_path
 from app.services import media
-from app.services.rendering import compose, timeline
+from app.services.rendering import compose, sync, timeline
 from app.workers.jobs import Cancelled, JobContext, Permanent
 
 log = logging.getLogger(__name__)
@@ -171,7 +171,13 @@ def run_render(ctx: JobContext) -> dict:
             "render_s": round(time.monotonic() - started, 1),
         }
         _update(rid, **fields)
-        return {"render_id": rid, **fields}
+        ctx.stage("sync_check", 0.98, "Checking caption and audio timing")
+        try:
+            timing = sync.check(source_path(rec), out, doc)
+        except Exception as e:  # noqa: BLE001 — a failed check is reported, never discards a good render
+            log.warning("timing check failed: %s", e)
+            timing = {"ok": None, "error": f"{type(e).__name__}: {e}"[:300]}
+        return {"render_id": rid, **fields, "timing": timing}
     except Cancelled:
         _update(rid, status="cancelled")
         raise

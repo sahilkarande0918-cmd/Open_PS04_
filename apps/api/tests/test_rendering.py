@@ -214,3 +214,5 @@ def test_write_project_copies_only_the_fonts_used(tmp_path):
         "fira-code-600.woff2",
         "poppins-700.woff2",
     ]
+    assert (tmp_path / "gsap.min.js").stat().st_size > 50_000  # offline renders: no CDN
+    assert '<script src="gsap.min.js"></script>' in (tmp_path / "index.html").read_text(encoding="utf-8")
