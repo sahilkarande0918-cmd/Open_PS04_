@@ -12,13 +12,14 @@ import {
   brandInk,
   contrast,
   type BrandKit,
+  type CaptionPosition,
   type CaptionPreset,
   type Corner,
 } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
 
 const COLUMNS =
-  "id, name, is_default, colors, fonts, logo, handle, watermark, caption_preset, intro, outro";
+  "id, name, is_default, colors, fonts, logo, handle, watermark, caption_preset, caption_position, intro, outro";
 const PRESETS: { value: CaptionPreset; label: string; hint: string }[] = [
   { value: "highlight-word", label: "Highlight word", hint: "spoken word on an accent pill" },
   { value: "karaoke", label: "Karaoke", hint: "words fill with the accent as they are spoken" },
@@ -222,6 +223,14 @@ export function BrandEditor({ orgId, orgName, canEdit }: { orgId: string; orgNam
               </label>
             ))}
           </div>
+          <label className="flex items-center gap-2 pt-1 text-[14px]">
+            Position
+            <select value={draft.caption_position} onChange={(e) => set("caption_position", e.target.value as CaptionPosition)}
+              className="rounded-[4px] bg-surface-2 px-2 py-1.5 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <option value="lower">Lower third (default)</option>
+              <option value="upper">Top (code panels move down)</option>
+            </select>
+          </label>
         </section>
 
         <section className="grid gap-5 sm:grid-cols-2">

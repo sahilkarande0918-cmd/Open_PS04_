@@ -1,21 +1,14 @@
-import { brandInk, fontFaces, type BrandKit } from "@/lib/brand";
+import { CaptionPage, rgba, type CaptionWord } from "@/components/brand/caption-page";
+import { CAPTION_ZONES, fontFaces, type BrandKit } from "@/lib/brand";
 
 // 20 % scale of the 1080×1920 render; sizes and positions mirror apps/api/app/services/rendering/compose.py
 const S = 0.2;
 const W = 1080 * S, H = 1920 * S;
-const SAMPLE = [
-  { t: "Ab", code: false },
-  { t: "hum", code: false },
-  { t: "AbortController", code: true },
-  { t: "use", code: false },
-  { t: "karenge", code: false },
+// sample page with the third word "being spoken"
+const SAMPLE: CaptionWord[][] = [
+  [{ text: "Ab", isCode: false, state: "said" }, { text: "hum", isCode: false, state: "said" }],
+  [{ text: "AbortController", isCode: true, state: "spoken" }, { text: "use", isCode: false, state: "upcoming" }, { text: "karenge", isCode: false, state: "upcoming" }],
 ];
-const SPOKEN = 2; // the word shown as "being spoken"
-
-function rgba(hex: string, a: number) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
 
 function Frame({ label, bg, children }: { label: string; bg: string; children: React.ReactNode }) {
   return (
@@ -29,8 +22,6 @@ function Frame({ label, bg, children }: { label: string; bg: string; children: R
 export function BrandPreview({ kit }: { kit: BrandKit }) {
   const { background: bg, text, accent } = kit.colors;
   const body = `"${kit.fonts.body} Brand", sans-serif`;
-  const code = `"${kit.fonts.code} Brand", monospace`;
-  const ink = brandInk(accent);
   const shadow = "0 0.6px 0 rgba(0,0,0,.7), 0 0 4px rgba(0,0,0,.8)";
   const logo = (max: [number, number]) =>
     // eslint-disable-next-line @next/next/no-img-element -- data-URL logo, nothing to optimise
@@ -41,20 +32,7 @@ export function BrandPreview({ kit }: { kit: BrandKit }) {
   };
   const h1: React.CSSProperties = { margin: 0, font: `700 ${84 * S}px/1.12 ${body}`, color: text };
 
-  function word(w: (typeof SAMPLE)[number], i: number) {
-    const spoken = i === SPOKEN, said = i < SPOKEN;
-    const style: React.CSSProperties = {
-      font: w.code ? `700 ${52 * S}px/1.2 ${code}` : `700 ${60 * S}px/1.2 ${body}`,
-      padding: `${2 * S}px ${12 * S}px`, borderRadius: 12 * S, color: text,
-      textShadow: kit.caption_preset === "boxed" ? "none" : shadow,
-    };
-    if (w.code) Object.assign(style, spoken ? { background: accent, color: ink } : { background: rgba(bg, 0.85), color: accent, textShadow: "none" });
-    else if (kit.caption_preset === "highlight-word" && spoken) Object.assign(style, { background: accent, color: ink, textShadow: "none" });
-    else if (kit.caption_preset === "karaoke" && (spoken || said)) style.color = accent;
-    else if (kit.caption_preset === "boxed" && spoken) style.color = accent;
-    return <span key={i} style={style}>{w.t}</span>;
-  }
-
+  const [zoneTop, zoneBottom] = CAPTION_ZONES[kit.caption_position ?? "lower"];
   const [vert, horiz] = kit.watermark.position.split("-") as ["top" | "bottom", "left" | "right"];
   return (
     <div aria-label="Brand preview" className="flex flex-wrap gap-3 lg:w-[460px]">
@@ -79,10 +57,8 @@ export function BrandPreview({ kit }: { kit: BrandKit }) {
             {kit.handle && <span style={{ font: `700 ${34 * S}px/1 ${body}`, color: text, textShadow: shadow }}>{kit.handle}</span>}
           </div>
         )}
-        <div style={{ position: "absolute", left: 48 * S, right: 48 * S, top: 1350 * S, height: 300 * S, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 10 * S, ...(kit.caption_preset === "boxed" ? { background: rgba(bg, 0.82), borderRadius: 24 * S, padding: `${22 * S}px ${18 * S}px` } : {}) }}>
-            {SAMPLE.map(word)}
-          </div>
+        <div style={{ position: "absolute", left: 48 * S, right: 48 * S, top: zoneTop * S, height: (zoneBottom - zoneTop) * S, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CaptionPage lines={SAMPLE} look={{ colors: kit.colors, fonts: kit.fonts, preset: kit.caption_preset }} scale={S} />
         </div>
       </Frame>
       {kit.outro.enabled && (

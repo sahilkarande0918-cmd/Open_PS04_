@@ -34,6 +34,7 @@ CAPTION_STYLE = {
     "safeTop": 1350,
     "safeBottom": 1650,
 }
+CAPTION_ZONES = {"lower": (1350, 1650), "upper": (260, 560)}  # clear of the platforms' top and bottom UI
 # camelCase / PascalCase with an inner capital, dotted or called identifiers, operators
 CODE_RE = re.compile(r"[a-z][A-Z]|^[A-Z][a-z]+[A-Z]|\w[._]\w|\(\)|[<>{}=]")
 
@@ -134,6 +135,7 @@ def build(
     duration = round(end - start, 3)
     title = (highlight.get("title") or "")[:120]
     brand, preset = brand_snapshot(kit, title)
+    zone = CAPTION_ZONES[(kit or {}).get("caption_position") or "lower"]
     lead = brand["intro"]["duration"] if brand["intro"]["enabled"] else 0.0
     tail = brand["outro"]["duration"] if brand["outro"]["enabled"] else 0.0
     assets = {
@@ -208,7 +210,7 @@ def build(
             },
         ],
         "brand": brand,
-        "captionStyle": {**CAPTION_STYLE, "preset": preset},
+        "captionStyle": {**CAPTION_STYLE, "preset": preset, "safeTop": zone[0], "safeBottom": zone[1]},
         "renderSettings": {"quality": quality},
     }
     validate(doc)

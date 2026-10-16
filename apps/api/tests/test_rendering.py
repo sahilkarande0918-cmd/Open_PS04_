@@ -216,3 +216,40 @@ def test_write_project_copies_only_the_fonts_used(tmp_path):
     ]
     assert (tmp_path / "gsap.min.js").stat().st_size > 50_000  # offline renders: no CDN
     assert '<script src="gsap.min.js"></script>' in (tmp_path / "index.html").read_text(encoding="utf-8")
+
+
+def test_paginate_avoids_orphan_words_and_balances_lines():
+    text = "Chalo abhi isko app component mein use kaati hai."
+    ws = [
+        {"text": t, "start": i * 0.3, "end": i * 0.3 + 0.25, "isCode": False}
+        for i, t in enumerate(text.split())
+    ]
+    pages = compose.paginate(ws, max_chars=26, max_lines=2, duration=10)
+    sizes = [sum(len(line) for line in p["lines"]) for p in pages]
+    assert len(pages) == 2 and min(sizes) >= 3  # was 8 words + a lone "hai."
+    for p in pages:
+        assert all(len(" ".join(w["text"] for w in line)) <= 26 for line in p["lines"])
+    one = compose.paginate(ws[:5], max_chars=26, max_lines=2, duration=10)[0]["lines"]
+    assert [len(line) for line in one] in ([2, 3], [3, 2])  # balanced, not 4 + 1
+
+
+def test_upper_caption_position_moves_captions_up_and_panels_down():
+    panel_kf = {
+        "t": 0,
+        "crop_x": 360,
+        "crop_y": 60,
+        "crop_width": 1200,
+        "crop_height": 960,
+        "layout": "panel",
+        "region": "a",
+        "transition_mode": "start",
+    }
+    doc = timeline.build(
+        highlight(crop_keyframes=[panel_kf]), REC, [], "r-1", kit={**KIT, "caption_position": "upper"}
+    )
+    assert (doc["captionStyle"]["safeTop"], doc["captionStyle"]["safeBottom"]) == (260, 560)
+    html = compose.compile_html(doc)
+    assert "top: 260px; height: 300px;" in html
+    assert '"win": [720, 864]' in html  # panel centred at 60 % instead of 40 %, clear of the captions
+    lower = timeline.build(highlight(crop_keyframes=[panel_kf]), REC, [], "r-1", kit=KIT)
+    assert lower["captionStyle"]["safeTop"] == 1350 and '"win": [336, 864]' in compose.compile_html(lower)

@@ -17,7 +17,7 @@ from app.core.auth import User, current_user
 from app.core.config import get_settings
 from app.core.db import service_client, transcript_words
 from app.core.storage import render_dir
-from app.services.rendering import captions, timeline
+from app.services.rendering import captions, compose, timeline
 
 router = APIRouter()
 FILES = {"video": "output_path", "thumb": "thumbnail_path"}
@@ -44,11 +44,8 @@ def _brand_kit(org_id: str, kit_id: str | None) -> dict | None:
     return rows[0] if rows else None
 
 
-@router.post("/highlights/{highlight_id}/render", status_code=202)
-def render_highlight(highlight_id: str, body: RenderRequest, user: User = Depends(current_user)) -> dict:
-    h = get_owned("highlight_candidates", highlight_id, user, write=True)
-    if h["status"] != "selected":
-        raise HTTPException(409, "Select this highlight before rendering it")
+def _inputs(h: dict) -> tuple[dict, list[dict]]:
+    """The highlight's recording and its latest transcript's words."""
     db = service_client()
     rec = db.table("source_recordings").select("*").eq("id", h["recording_id"]).single().execute().data
     tr_id = h.get("transcript_id") or (
@@ -61,7 +58,39 @@ def render_highlight(highlight_id: str, body: RenderRequest, user: User = Depend
         .data
         or [{}]
     )[0].get("id")
-    words = transcript_words(tr_id) if tr_id else []
+    return rec, transcript_words(tr_id) if tr_id else []
+
+
+@router.get("/highlights/{highlight_id}/preview")
+def preview_highlight(
+    highlight_id: str, brand_kit_id: str | None = None, user: User = Depends(current_user)
+) -> dict:
+    """Subtitle preview: the exact caption pages, zone and panel placement a render would use (same
+    timeline builder and paginator), so the studio preview and the export stay in sync."""
+    h = get_owned("highlight_candidates", highlight_id, user)
+    rec, words = _inputs(h)
+    kit = _brand_kit(h["organization_id"], brand_kit_id)
+    doc = timeline.build(h, rec, words, "preview", kit=kit)
+    item = next(i for t in doc["tracks"] for i in t["items"] if i["type"] == "caption")
+    style = doc["captionStyle"]
+    pages = compose.paginate(item["words"], style["maxCharsPerLine"], style["maxLines"], item["duration"])
+    return {
+        "pages": pages,  # clip-relative seconds
+        "captionStyle": style,
+        "colors": doc["brand"]["colors"],
+        "fonts": doc["brand"]["fonts"],
+        "panelCenter": compose.panel_center(style, doc["height"]),
+        "brandKit": kit["name"] if kit else None,
+    }
+
+
+@router.post("/highlights/{highlight_id}/render", status_code=202)
+def render_highlight(highlight_id: str, body: RenderRequest, user: User = Depends(current_user)) -> dict:
+    h = get_owned("highlight_candidates", highlight_id, user, write=True)
+    if h["status"] != "selected":
+        raise HTTPException(409, "Select this highlight before rendering it")
+    db = service_client()
+    rec, words = _inputs(h)
     render_id = str(uuid.uuid4())
     kit = _brand_kit(h["organization_id"], body.brand_kit_id)
     logo = None

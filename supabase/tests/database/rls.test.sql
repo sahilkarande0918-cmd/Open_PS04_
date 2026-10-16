@@ -1,7 +1,7 @@
 -- RLS isolation tests. Run: pnpm exec supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(35);
 
 -- two users, each in their own org
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -106,6 +106,8 @@ select throws_ok($$ insert into public.brand_kits (organization_id, name, colors
 select throws_ok($$ insert into public.brand_kits (organization_id, name, logo)
   values (current_setting('test.alpha')::uuid, 'Script logo', 'data:text/html;base64,PHNjcmlwdD4=') $$,
   '23514', null, 'logo must be an image data URL');
+select throws_ok($$ insert into public.brand_kits (organization_id, name, caption_position)
+  values (current_setting('test.alpha')::uuid, 'Bad position', 'middle') $$, '23514', null, 'caption position is lower or upper');
 reset role;
 select pg_temp.login('22222222-2222-2222-2222-222222222222');
 select is((select count(*)::int from public.brand_kits), 0, 'bob cannot see alpha brand kits');

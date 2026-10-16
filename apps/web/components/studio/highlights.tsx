@@ -3,7 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, RefreshCw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CaptionPage, type CaptionLook, type CaptionWord } from "@/components/brand/caption-page";
 import { apiFetch, useBackend } from "@/lib/backend";
+import { fontFaces, type CaptionPreset } from "@/lib/brand";
 import { useMediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { Renders } from "./renders";
@@ -36,8 +38,33 @@ type Highlight = {
   boundaries_edited: boolean;
 };
 
-/** Panel centre as a fraction of frame height — keeps code above the caption zone (matches the renderer). */
+/** Panel centre as a fraction of frame height when no preview data yet (renderer default: captions lower). */
 const PANEL_CENTER = 0.4;
+const RENDER_H = 1920;
+
+type PageWord = { text: string; start: number; end: number; isCode: boolean };
+type SubtitlePreview = {
+  pages: { start: number; end: number; lines: PageWord[][] }[];
+  captionStyle: { preset: CaptionPreset; safeTop: number; safeBottom: number };
+  colors: CaptionLook["colors"];
+  fonts: CaptionLook["fonts"];
+  panelCenter: number;
+  brandKit: string | null;
+};
+
+/** Caption page on screen at clip time t, with each word's state (same on/off rules as the renderer). */
+function pageAt(preview: SubtitlePreview | undefined, t: number): CaptionWord[][] | null {
+  const page = preview?.pages.find((p) => p.start <= t && t < p.end);
+  if (!page) return null;
+  const flat = page.lines.flat();
+  return page.lines.map((line) =>
+    line.map((w) => {
+      const next = flat[flat.indexOf(w) + 1];
+      const off = Math.max(next ? next.start : page.end, w.start + 0.05);
+      return { text: w.text, isCode: w.isCode, state: t < w.start ? "upcoming" : t < off ? "spoken" : "said" };
+    }),
+  );
+}
 const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 
 /** Crop box at clip-relative time t: eased between keyframes, stepped at cuts. */
@@ -61,10 +88,30 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
     if (v && c && v.readyState >= 2) c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
   };
   const W = 216, H = 384; // 9:16 preview
+  const S = H / RENDER_H;
   const k = h.crop_keyframes.length ? cropAt(h.crop_keyframes, t) : null;
-
-
-
+  const backend = useBackend();
+  const base = backend.data?.state === "online" ? backend.data.url : null;
+  const subtitles = useQuery({
+    queryKey: ["subtitle-preview", h.id, h.start_s, h.end_s],
+    enabled: !!base,
+    queryFn: async () => {
+      const r = await apiFetch(base!, `/highlights/${h.id}/preview`);
+      if (!r.ok) throw new Error("preview refused");
+      return (await r.json()) as SubtitlePreview;
+    },
+  });
+  const panelCenter = subtitles.data?.panelCenter ?? PANEL_CENTER;
+  const page = pageAt(subtitles.data, t);
+  // follow playback every frame (timeupdate fires only ~4×/s, too coarse for word highlighting)
+  const tick = useRef(0);
+  function follow() {
+    const v = portrait.current;
+    if (!v || v.paused) return;
+    setT(Math.max(0, v.currentTime - h.start_s));
+    tick.current = requestAnimationFrame(follow);
+  }
+  useEffect(() => () => cancelAnimationFrame(tick.current), []);
   // same geometry as the renderer (apps/api/app/services/rendering/compose.py `camera`)
   let style: React.CSSProperties = {};
   let win = { top: 0, height: H };
@@ -72,7 +119,7 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
     const s = k.layout === "panel" ? W / k.crop_width : H / k.crop_height;
     if (k.layout === "panel") {
       const ph = k.crop_height * s;
-      win = { top: Math.min(Math.max(PANEL_CENTER * H - ph / 2, 0), H - ph), height: ph };
+      win = { top: Math.min(Math.max(panelCenter * H - ph / 2, 0), H - ph), height: ph };
     }
     style = { position: "absolute", width: srcW * s, height: srcH * s, left: -k.crop_x * s, top: -k.crop_y * s, maxWidth: "none" };
   }
@@ -99,6 +146,7 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
             muted={false}
             onLoadedMetadata={(e) => { e.currentTarget.currentTime = h.start_s; }}
             onSeeked={drawFrame}
+            onPlay={() => { tick.current = requestAnimationFrame(follow); }}
             style={style}
             onTimeUpdate={(e) => {
               const ct = e.currentTarget.currentTime;
@@ -112,6 +160,14 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
           <p className="p-4 text-[13px] text-muted">Preview needs the processing backend online.</p>
         )}
         {k?.layout === "panel" && <span className="absolute left-2 top-2 rounded-[3px] bg-black/70 px-1.5 text-[11px] text-white">code panel</span>}
+        {subtitles.data && page && (
+          <div aria-live="off" style={{ position: "absolute", left: 48 * S, right: 48 * S, top: subtitles.data.captionStyle.safeTop * S,
+            height: (subtitles.data.captionStyle.safeBottom - subtitles.data.captionStyle.safeTop) * S, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <style>{fontFaces}</style>
+            <CaptionPage lines={page} scale={S}
+              look={{ colors: subtitles.data.colors, fonts: subtitles.data.fonts, preset: subtitles.data.captionStyle.preset }} />
+          </div>
+        )}
       </div>
       <div className="min-w-[260px] flex-1 space-y-3">
         <div className="flex items-center gap-3 text-[13px]">
@@ -123,6 +179,11 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
           </button>
           <span className="tabular-nums text-muted">{fmt(t)} / {fmt(h.end_s - h.start_s)}</span>
         </div>
+        {subtitles.data && (
+          <p className="text-[12px] text-muted">
+            Captions as they will render ({subtitles.data.brandKit ? `brand kit “${subtitles.data.brandKit}”` : "no brand kit"}, {subtitles.data.captionStyle.preset}). Fix wording in the transcript below.
+          </p>
+        )}
         {box && (
           <div>
             <p className="mb-1.5 text-[13px] text-muted">Source frame — drag to move the crop at this moment{h.crop_overridden ? " (manually adjusted)" : ""}</p>

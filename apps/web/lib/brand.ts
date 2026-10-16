@@ -5,6 +5,9 @@ export type BodyFont = (typeof BODY_FONTS)[number];
 export type CodeFont = (typeof CODE_FONTS)[number];
 export type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type CaptionPreset = "highlight-word" | "karaoke" | "boxed";
+export type CaptionPosition = "lower" | "upper";
+/** Caption zones in render pixels (matches CAPTION_ZONES in apps/api/app/services/rendering/timeline.py). */
+export const CAPTION_ZONES: Record<CaptionPosition, [number, number]> = { lower: [1350, 1650], upper: [260, 560] };
 
 /** A `brand_kits` row (see supabase/migrations/20261017010000_brand_kits.sql). */
 export type BrandKit = {
@@ -17,6 +20,7 @@ export type BrandKit = {
   handle: string;
   watermark: { enabled: boolean; position: Corner };
   caption_preset: CaptionPreset;
+  caption_position: CaptionPosition;
   intro: { enabled: boolean; duration: number; title: string };
   outro: { enabled: boolean; duration: number; cta: string };
 };

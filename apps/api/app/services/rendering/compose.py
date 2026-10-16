@@ -18,17 +18,24 @@ from pathlib import Path
 
 FONTS_DIR = Path(__file__).with_name("fonts")
 GSAP_FILE = Path(__file__).with_name("vendor") / "gsap.min.js"  # GSAP 3.14.2, bundled so renders work offline
-PANEL_CENTER = 0.4  # panel centre as a fraction of frame height (clear of the caption zone)
+PANEL_CENTER = 0.4  # panel centre as a fraction of frame height, captions in the lower zone
+PANEL_CENTER_UPPER_CAPTIONS = 0.6  # captions at the top: code panels sit lower
+
+
+def panel_center(caption_style: dict, h: int) -> float:
+    return PANEL_CENTER if caption_style["safeTop"] >= h / 2 else PANEL_CENTER_UPPER_CAPTIONS
+
+
 PAGE_GAP_S = 0.7  # a pause this long starts a new caption page
 LINGER_S = 0.5  # a page stays this long after its last word when speech pauses
 
 
-def camera(k: dict, w: int, h: int) -> dict:
+def camera(k: dict, w: int, h: int, center: float = PANEL_CENTER) -> dict:
     """Frame-space placement for one crop keyframe."""
     if k["layout"] == "panel":
         s = w / k["crop_width"]
         ph = round(k["crop_height"] * s)
-        win_y = min(max(round(PANEL_CENTER * h - ph / 2), 0), h - ph)
+        win_y = min(max(round(center * h - ph / 2), 0), h - ph)
         win = [win_y, ph]
     else:
         s = h / k["crop_height"]
@@ -40,40 +47,67 @@ def camera(k: dict, w: int, h: int) -> dict:
     }
 
 
-def camera_track(keyframes: list[dict], w: int, h: int) -> list[dict]:
+def camera_track(keyframes: list[dict], w: int, h: int, center: float = PANEL_CENTER) -> list[dict]:
     out, prev = [], None
     for k in sorted(keyframes, key=lambda k: k["t"]):
-        c = camera(k, w, h)
+        c = camera(k, w, h, center)
         c["jump"] = prev is None or k["transition_mode"] == "cut" or k["layout"] != prev["layout"]
         out.append(c)
         prev = k
     return out
 
 
+def _chars(ws: list[dict]) -> int:
+    return len(" ".join(w["text"] for w in ws))
+
+
+def _lines(ws: list[dict], max_chars: int, max_lines: int) -> list[list[dict]] | None:
+    """Balanced line breaks for one page (shortest longest line), or None if it cannot fit."""
+    if _chars(ws) <= max_chars or len(ws) == 1:
+        return [ws]
+    if max_lines < 2:
+        return None
+    best = None
+    for i in range(1, len(ws)):
+        head, rest = ws[:i], _lines(ws[i:], max_chars, max_lines - 1)
+        if rest and _chars(head) <= max_chars:
+            worst = max(_chars(head), *(_chars(line) for line in rest))
+            if best is None or worst < best[0]:
+                best = (worst, [head, *rest])
+    return best[1] if best else None
+
+
+def _pages(phrase: list[dict], max_chars: int, max_lines: int) -> list[list[list[dict]]]:
+    """Fewest pages that fit, with the phrase split into pages of even length (no orphan words)."""
+    total = _chars(phrase)
+    for n in range(1, len(phrase) + 1):
+        chunks, cur, pos = [], [], 0
+        for w in phrase:
+            mid = pos + len(w["text"]) / 2
+            if cur and len(chunks) < n - 1 and mid > total * (len(chunks) + 1) / n:
+                chunks.append(cur)
+                cur = []
+            cur.append(w)
+            pos += len(w["text"]) + 1
+        chunks.append(cur)
+        laid = [_lines(c, max_chars, max_lines) for c in chunks]
+        if all(laid):
+            return laid
+    return [[[w]] for w in phrase]
+
+
 def paginate(words: list[dict], max_chars: int, max_lines: int, duration: float) -> list[dict]:
-    """[{start, end, lines: [[word, ...], ...]}] — breaks on length, long pauses and sentence ends."""
-    pages, lines, line = [], [], []
-
-    def close():
-        nonlocal lines, line
-        if line:
-            lines.append(line)
-        if lines:
-            pages.append({"lines": lines})
-        lines, line = [], []
-
-    prev = None
+    """[{start, end, lines: [[word, ...], ...]}]. Phrases end at sentence ends and long pauses; each phrase
+    is laid out on the fewest pages of ≤ max_lines balanced lines of ≤ max_chars characters."""
+    phrases, cur = [], []
     for w in words:
-        if prev and (w["start"] - prev["end"] > PAGE_GAP_S or prev["text"][-1] in ".?!"):
-            close()
-        if line and len(" ".join(x["text"] for x in [*line, w])) > max_chars:
-            lines.append(line)
-            line = []
-            if len(lines) == max_lines:
-                close()
-        line.append(w)
-        prev = w
-    close()
+        if cur and (w["start"] - cur[-1]["end"] > PAGE_GAP_S or cur[-1]["text"][-1] in ".?!"):
+            phrases.append(cur)
+            cur = []
+        cur.append(w)
+    if cur:
+        phrases.append(cur)
+    pages = [{"lines": lines} for ph in phrases for lines in _pages(ph, max_chars, max_lines)]
     for i, p in enumerate(pages):
         first, last = p["lines"][0][0], p["lines"][-1][-1]
         nxt = pages[i + 1]["lines"][0][0]["start"] if i + 1 < len(pages) else duration
@@ -138,7 +172,7 @@ def compile_html(doc: dict) -> str:
     chip = rgba(bg, 0.85)
     states = word_states(preset, text, accent, ink, chip, shadow)
 
-    cams = camera_track(video["cropKeyframes"], w, h)
+    cams = camera_track(video["cropKeyframes"], w, h, panel_center(style, h))
     for c in cams:
         c["t"] = round(c["t"] + lead, 3)
     cap_at = caption["start"] if caption else 0
