@@ -1,10 +1,9 @@
 # Current task
 
-**Phase 01 — finish deployment.** All Phase 01 code works against the local Supabase stack (Docker). Remaining: connect the remote `Reel-Studio` Supabase project and deploy `apps/web` to Vercel.
+**Next: Phase 04 — captions, branding, Hyperframes rendering** (render a selected highlight to a branded 9:16 MP4 using its crop keyframes and word-timed captions).
 
-Blockers (owner action):
-1. Supabase: `pnpm exec supabase login` with the Developer account; share the Reel-Studio project ref (public).
-2. Vercel: authorize deployment (Vercel login or dashboard import with root `apps/web`).
+Phase 02 and 03 pass on synthetic fixtures (TEST_STATUS). Still blocked on the owner:
+1. Supabase CLI access to the friend's org (or run the 3 migration files in the Reel-Studio SQL editor), Auth URL config, disable email confirmation for the demo.
+2. Tailscale install + Funnel for the public tunnel (Cloudflare is blocked on this network).
 
-Next action after unblock: `supabase link --project-ref <ref>` → `supabase db push` → set Vercel env vars → deploy → set Auth redirect URLs → re-run auth flow on production.
-While blocked: Phase 02 (upload + ingestion + transcription) can proceed locally.
+Phase 04 plan: `packages/timeline-schema` (Zod canonical timeline + JSON Schema) → timeline compiler to Hyperframes HTML (source video crop via keyframes, panel layout over blurred background, word-by-word captions with code terms as formatted text, brand intro/outro) → render job → export assets → editor preview with `@hyperframes/player`.

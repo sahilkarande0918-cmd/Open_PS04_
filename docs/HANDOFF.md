@@ -1,31 +1,24 @@
 # Handoff
 
-_Last updated: 2026-10-16, Phase 02 in progress; Phase 01 deployment blocked on owner actions._
+_Last updated: 2026-10-16 — Phases 02/03 verified on synthetic fixtures; Phase 01 production blocked on owner access._
 
 ## Where things are
-- Repo: `C:\dev\Reel-Studio` (moved out of OneDrive by fresh clone; old OneDrive copy can be deleted by the owner).
-- Python venv: `%LOCALAPPDATA%\reel-studio\venv` (3.11). Converter venv (one-time model conversion): `%LOCALAPPDATA%\reel-studio\convert-venv`.
-- Media data: `DATA_DIR=C:/Users/Sahil/AppData/Local/reel-studio/data` (git-ignored, outside OneDrive).
-- Local Supabase (Docker): `pnpm exec supabase start -x vector,logflare,imgproxy,edge-runtime`. Both migrations applied locally.
-- `apps/web/.env.local`, `apps/api/.env` point at the LOCAL stack.
+- Repo `C:\dev\Reel-Studio`; venv `%LOCALAPPDATA%\reel-studio\venv` (Python 3.11); data `%LOCALAPPDATA%\reel-studio\data` (models, recordings, test-recordings, caches).
+- ASR model: `data/models/hinglish-apex-ct2` (converted Oriserve Hinglish-Apex). `apps/api/.env` sets `WHISPER_MODEL`, `WHISPER_LANGUAGE=hi`.
+- LLM: Ollama `qwen2.5vl:7b` (already pulled). OCR: RapidOCR (pip).
+- Local Supabase (Docker) has all 3 migrations; `.env` files point at it.
+- Run: `python -m app.serve --tunnel none` (API + worker) in `apps/api`; `pnpm dev` at root.
 
-## Verified
-- Phase 01 locally (see TEST_STATUS). Production: Vercel build READY but runtime 500 (env vars missing); remote Supabase empty.
-- Phase 02: upload API integration 6/6, glossary 5/5, pgTAP 16/16, web lint/typecheck clean.
+## Production
+- Vercel https://reel-studio-taupe.vercel.app: env vars set by owner, landing/login/signup 200, protected routes redirect. Works against the remote Supabase project, which still has **no tables** → onboarding fails there until migrations are applied.
+- Remote Supabase `adjwycjsxtxvjockxtan`: CLI account cannot see it.
+- Tunnel: Cloudflare blocked (port 7844); Tailscale Funnel supported by the launcher, needs owner install.
 
-## Blocked on owner
-1. Vercel env vars + redeploy (DEPLOYMENT.md).
-2. Supabase CLI access to friend's org or manual SQL in the Reel-Studio SQL editor; Auth URL config; disable email confirmation for demo.
-3. Tunnel: Cloudflare blocked on current network → install Tailscale + enable Funnel, or use a network that allows TCP 7844.
-4. A real Hinglish programming class recording (2–10 min) for the Phase 02 acceptance test.
+## Fixtures (synthetic, not in git)
+`data/test-recordings/react-hooks-hinglish.mp4` (+ `-hq` 52 MB, `.reference.json`, `.ocr.json`) and `express-scroll-focus.mp4` built by `tests/fixtures/lecture/build.py` (Windows Ravi en-IN voice + Hyperframes). Real-world Hinglish validation remains unverified (no free licensed download).
 
-## In flight
-- `requirements/ml.txt` install (faster-whisper + CUDA 12 cuBLAS/cuDNN wheels) into the main venv.
-- CTranslate2 conversion of `Oriserve/Whisper-Hindi2Hinglish-Apex` (Apache-2.0, large-v3-turbo based) → set `WHISPER_MODEL` to the output dir.
+## Verified (see TEST_STATUS)
+Upload with resume through the UI; GPU ASR 25.8× real time; WER 31.1 % → 28.2 % with screen OCR; timing ±0.27 s; cancel/retry/crash recovery; highlights 2/2 on topic boundaries; reframing cuts at real window switches; highlight UI edits persist.
 
-## Next actions
-1. Verify faster-whisper on the RTX 5050 (CUDA, float16), fall back to int8_float16/CPU if needed.
-2. Run worker on the synthetic fixture and the Oriserve sample Hindi clips; then on the owner's real recording. Record WER-style spot checks and real-time factor in TEST_STATUS.
-3. Browser-test upload → progress → transcript → click-to-seek → edit persistence.
-4. WhisperX alignment (optional, needs torch cu128) — document if skipped.
-5. Phase 03: audio energy/pauses, PySceneDetect + OpenCV activity, highlight candidates, reframing.
+## Next
+Phase 04 (CURRENT_TASK.md). Then 05 topic-to-video, 06 editor, 07 publishing, 08 analytics/SaaS, 09 submission.
