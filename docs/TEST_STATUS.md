@@ -68,5 +68,17 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 
 **Real-world validation: unverified.** Spoken Tutorial (IIT Bombay, CC BY-SA 4.0) has Hindi Python screen recordings, but direct file access returns 403 and the official bulk download is now paid (₹99 + GST), which the ₹0 rule forbids. Internet Archive hits were unverifiable YouTube re-uploads; YouTube downloading was not attempted (ToS). A synthetic voice is not equivalent to a real instructor.
 
+## Phase 03 (2026-10-16)
+| Test | Result | Evidence |
+|------|--------|----------|
+| Unit: glossary 9, screen correction 4, highlights 3, reframe 7, cleanup 2, API 5 | ✅ 30 | `pytest` (6 integration tests skipped without RS_INTEGRATION) |
+| OCR on lecture (35 frames) | ✅ 220 s CPU | tokens: AbortController, AbortError, setData, useEffect, useState, useFetch … |
+| Screen-evidence correction on lecture | ✅ | AbortController 4/4, AbortError fixed, WER 28.2 %; no false merges after guards (setData left uncorrected on purpose) |
+| Highlight boundaries vs reference topics (lecture) | ✅ 2/2 starts, 2/2 ends | `tests/eval_highlights.py`; earlier iterations 1/5 → 3/4 → 2/2 recorded in git history |
+| LLM judge determinism | ✅ temperature 0, seed 7 | same windows across reruns |
+| Reframing on focus fixture | ✅ | cuts at 26.0 s (browser) and 31.5 s (editor) = ground-truth switch times; single panel width |
+| Highlights UI | ✅ | select, word-snapped boundary edit, manual crop keyframe persisted (local DB) |
+| analyze job timings (lecture) | ✅ | activity 7.3 s, OCR 219.8 s, LLM ~13 s/clip after a ~86 s first load |
+
 ## Unverified / untested
 Phases 03–09. Remote Supabase (migrations not applied), email confirmation and password-reset emails, public tunnel.

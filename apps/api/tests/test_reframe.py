@@ -48,7 +48,7 @@ def test_rapid_cursor_jitter_inside_dead_zone_does_not_shake():
 def test_long_code_lines_use_readable_panel_instead_of_cutting_code():
     ks = plan(samples(lambda t: ((330, 400, 1100, 60), 0.003, False)), OCR, 0, 20, W, H)
     assert any(k["layout"] == "panel" and k["crop_width"] >= 1100 for k in ks)
-    assert all(k["crop_width"] <= 1280 for k in ks)
+    assert len({k["crop_width"] for k in ks}) == 1  # one steady zoom level
 
 
 def test_vertical_scrolling_keeps_horizontal_framing():
@@ -67,3 +67,10 @@ def test_switching_windows_cuts_instead_of_panning():
     cut = [k for k in ks if k["transition_mode"] == "cut"]
     assert cut and abs(cut[0]["t"] - 10) < 0.01
     assert all(k["crop_x"] >= 0 and k["crop_x"] + k["crop_width"] <= W for k in ks)
+
+
+def test_layout_does_not_flicker_between_crop_and_panel():
+    # active box width alternates around the panel threshold every sample
+    flip = lambda t: ((400, 400, 900 if int(t * 2) % 2 else 500, 40), 0.002, False)  # noqa: E731
+    ks = plan(samples(flip), OCR, 0, 20, W, H)
+    assert len({k["layout"] for k in ks}) == 1

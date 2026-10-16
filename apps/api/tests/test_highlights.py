@@ -7,14 +7,18 @@ def speech(spec: list[tuple[str, float]], t0: float = 0.0) -> list[dict]:
     for text, pause in spec:
         toks = text.split()
         for j, tok in enumerate(toks):
-            out.append({"idx": len(out), "raw_text": tok, "corrected_text": tok, "start_s": t, "end_s": t + 0.35})
+            out.append(
+                {"idx": len(out), "raw_text": tok, "corrected_text": tok, "start_s": t, "end_s": t + 0.35}
+            )
             t += 0.4
         t += pause
     return out
 
 
 def test_sentences_split_on_punctuation_and_long_pauses():
-    ws = speech([("ab hum hook banayenge.", 0.2), ("phir state banayenge", 1.2), ("aur effect likhenge.", 0.3)])
+    ws = speech(
+        [("ab hum hook banayenge.", 0.2), ("phir state banayenge", 1.2), ("aur effect likhenge.", 0.3)]
+    )
     ss = sentences(ws)
     assert [(s.start, s.end) for s in ss] == [(0, 3), (4, 6), (7, 9)]
     assert ss[1].pause_after >= 1.2

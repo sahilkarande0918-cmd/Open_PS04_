@@ -19,7 +19,8 @@ DEAD_ZONE = 0.18  # fraction of crop width the target may move before the camera
 MAX_SPEED = 900.0  # px/s camera pan cap
 EASE = 0.35  # fraction of the remaining distance covered per step
 HOLD_S = 2.5  # keep following the last activity this long before drifting to the text region
-PANEL_MAX_W = 1280  # widest source box shown as a portrait panel (keeps code legible at 1080 wide)
+PANEL_W = 1200  # fixed panel width: one steady zoom level for long code lines (legible at 1080 wide)
+LAYOUT_HOLD = 3  # samples a new layout must persist before switching (no zoom flicker)
 
 
 @dataclass
@@ -81,7 +82,10 @@ def plan(
     step_s: float = 0.5,
 ) -> list[dict]:
     crop_w = int(round(src_h * 9 / 16 / 2) * 2)  # 608 for 1080p
-    cx = src_w / 2
+    panel_w = min(PANEL_W, src_w)
+    panel_h = int(min(src_h, panel_w * 0.8))
+    cx, cy = src_w / 2, src_h / 2
+    layout, pending, streak = None, None, 0
     out: list[Keyframe] = []
     last_t = start
     for t, box, cut in targets(samples, ocr_frames, start, end, src_w, src_h):
@@ -90,29 +94,35 @@ def plan(
         dt = max(t - last_t, 1e-3)
         last_t = t
         if box is None:
-            tx, layout, w, h, y = cx, "crop", crop_w, src_h, 0
-            region = "hold"
+            tx, ty, want, region = cx, cy, layout or "crop", "hold"
         else:
             bx, by, bw, bh = box
-            tx = bx + bw / 2
-            if bw > crop_w * 1.15:
-                layout = "panel"
-                w = int(min(max(bw * 1.08, crop_w), PANEL_MAX_W, src_w))
-                h = int(min(src_h, max(bh * 1.4, w * 0.75)))  # show surrounding lines for context
-                y = int(min(max(by + bh / 2 - h / 2, 0), src_h - h))
-            else:
-                layout, w, h, y = "crop", crop_w, src_h, 0
+            tx, ty = bx + bw / 2, by + bh / 2
+            want = "panel" if bw > crop_w * 1.15 else "crop"
             region = "active"
+        # hysteresis: switch layout only after it has been wanted for LAYOUT_HOLD samples (or at a cut)
+        if layout is None or cut:
+            layout, pending, streak = want, None, 0
+        elif want != layout:
+            streak = streak + 1 if pending == want else 1
+            pending = want
+            if streak >= LAYOUT_HOLD:
+                layout, pending, streak = want, None, 0
+        else:
+            pending, streak = None, 0
+        w, h = (panel_w, panel_h) if layout == "panel" else (crop_w, src_h)
         if cut or not out:  # a clip opens already framed on its first target
-            cx, mode = tx, ("cut" if cut else "start")
-        elif abs(tx - cx) > DEAD_ZONE * crop_w:
-            move = (tx - cx) * EASE
+            cx, cy, mode = tx, ty, ("cut" if cut else "start")
+        elif abs(tx - cx) > DEAD_ZONE * w:
             cap = MAX_SPEED * dt
-            cx += max(-cap, min(cap, move))
+            cx += max(-cap, min(cap, (tx - cx) * EASE))
             mode = "ease"
         else:
             mode = "hold"
+        if layout == "panel" and abs(ty - cy) > DEAD_ZONE * h and not cut and out:
+            cy += max(-MAX_SPEED * dt, min(MAX_SPEED * dt, (ty - cy) * EASE))
         x = int(min(max(cx - w / 2, 0), src_w - w))
+        y = int(min(max(cy - h / 2, 0), src_h - h)) if layout == "panel" else 0
         kf = Keyframe(round(t - start, 2), x, y, w, h, layout, region, mode)
         prev = out[-1] if out else None
         if (
@@ -121,7 +131,6 @@ def plan(
             or abs(prev.crop_x - kf.crop_x) > 6
             or prev.layout != kf.layout
             or abs(prev.crop_y - kf.crop_y) > 6
-            or abs(prev.crop_width - kf.crop_width) > 12
         ):
             out.append(kf)
     if not out:

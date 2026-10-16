@@ -46,4 +46,7 @@ def test_regressions_from_lecture_run():
     # Hindi "se" (from) + "data" must not be merged into setData, even with setData on screen
     assert shown(correct_with_screen(words("Hook se data nikalenge"), SEEN)) == "Hook se data nikalenge"
     # a leading Hindi word must not be swallowed into the identifier
-    assert shown(correct_with_screen(words("To about controller wala pattern"), SEEN)) == "To AbortController wala pattern"
+    assert (
+        shown(correct_with_screen(words("To about controller wala pattern"), SEEN))
+        == "To AbortController wala pattern"
+    )

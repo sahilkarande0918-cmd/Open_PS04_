@@ -1,6 +1,6 @@
 # Phases
 
-**Current phase:** 01 — Frontend, auth, database, deployment (in progress; blocked on owner logins for remote Supabase + Vercel)
+**Current phase:** 03 done on synthetic fixtures → next Phase 04. Phase 01 production still blocked on remote Supabase access + tunnel (owner).
 
 Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reason)
 
@@ -8,8 +8,8 @@ Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reas
 |-------|-------|--------|
 | 00 | Repository, contributors, foundation | ✅ |
 | 01 | Frontend, auth, database, deployment | 🟡 |
-| 02 | Recording ingestion & transcription | ⬜ |
-| 03 | Highlights & screen intelligence (reframing) | ⬜ |
+| 02 | Recording ingestion & transcription | 🟡 synthetic-verified |
+| 03 | Highlights & screen intelligence (reframing) | 🟡 synthetic-verified |
 | 04 | Captions, branding, Hyperframes rendering | ⬜ |
 | 05 | Topic-to-video | ⬜ |
 | 06 | Advanced timeline editor | ⬜ |
@@ -52,7 +52,7 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Tunnel | 🟡 | `python -m app.serve` (Cloudflare http2 / Tailscale Funnel); Cloudflare blocked on current network (port 7844) |
 | Repo moved out of OneDrive | ✅ | `C:\dev\Reel-Studio`, fresh clone, history intact |
 
-## Phase 02 — in progress
+## Phase 02 — verified on synthetic fixtures
 | Task | Status | Evidence |
 |------|--------|----------|
 | Recording-upload UI (drag-drop, progress, resume, offline state) | ✅ code | `components/studio/uploader.tsx` |
@@ -66,3 +66,17 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | Progress, retries, cancellation | ✅ | UI cancel/retry; worker kill → stale requeue → attempt 2 succeeded |
 | Benchmark | ✅ | 7.45 s for 192.5 s audio, 2.2 GB GPU (TEST_STATUS) |
 | **Acceptance** | 🟡 | all criteria pass on the SYNTHETIC lecture; real-world recording unverified (none legally free); AbortController/Kubernetes misses → Phase 03 OCR |
+
+## Phase 03 — verified on synthetic fixtures
+| Task | Status | Evidence |
+|------|--------|----------|
+| Speech energy, pauses | ✅ | `audio_features.py` self-check; speaker-relative pause ranking |
+| Screen changes / activity / scene cuts | ✅ | 2 fps change map; cuts at exact window switches on focus fixture (26.0 s, 31.5 s) |
+| Screen OCR + evidence-based term correction | ✅ | AbortController 0/4 → 4/4 on lecture; WER 31.1 % → 28.2 %; guards tested |
+| Semantic candidates + complete-thought boundaries | ✅ | lecture: 2/2 clips start and end on real topic boundaries |
+| Ranking, dedupe, reasons | ✅ | NMS, labelled heuristic(+LLM) score, reasons per clip |
+| Local LLM judgment | ✅ | Ollama qwen2.5vl:7b, temperature 0; vetoes on agreement |
+| Active-region reframing + smoothing | ✅ | 7 scenario tests; stable keyframes on real frames |
+| Clip selection UI, crop preview/override | ✅ | browser: select, boundary edit snaps to word end (61.19 s), manual crop keyframe persisted |
+| Judge-style recordings | 🟡 | static/typing/jitter/long lines/scroll/window-switch covered (unit + fixtures); changing *diagram* and slides not yet in a real fixture |
+| Real class recording | ⛔ | none legally obtainable at ₹0 (TEST_STATUS) |

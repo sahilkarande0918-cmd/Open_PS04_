@@ -71,3 +71,14 @@ The coding harness suggests `Co-Authored-By` trailers; the project owner's expli
 
 ## D-017 — Blackwell (RTX 5050, sm_120) runs CTranslate2 through JIT
 Measured: the first GPU transcription took 275 s for a 28 s clip (kernel JIT compilation); later runs took 1.35 s with `base`. `CUDA_CACHE_MAXSIZE` is raised to 4 GB so compiled kernels persist across worker restarts. Warm up the worker before a demo.
+
+## D-018 — OCR: RapidOCR (ONNX, CPU) and screen-evidence term correction
+*Alt:* Tesseract (system install, weaker on code fonts), PaddleOCR (heavier), GPU OCR.
+*Why:* pip-only, Apache-2.0, accurate on editor text (reads `new AbortController()` at 0.98). Identifiers seen on screen within ±30 s correct ASR mishearings ("about controller" → `AbortController`); a merge may not start with a Hinglish function word and must not swallow a leading word; user edits always win.
+*Trade-off:* ~3–6 s per frame on CPU (35 frames = 220 s for the 3-min lecture); capped at 90 frames per recording. Upgrade path: onnxruntime-gpu.
+
+## D-019 — Highlight scoring: transparent heuristic + local LLM, vetoes only on agreement
+Boundaries are sentence ends followed by pauses ranked against the speaker's own pause distribution (strict pool: both ends in the top 40 %). Features: boundary, length, voice energy/variation, pace, typing/screen activity, technical terms and spoken on-screen identifiers. The local LLM (Ollama `qwen2.5vl:7b`, temperature 0) adds standalone/educational/complete-start/end; a window is dropped only when the LLM says both ends are incomplete *and* pauses are not strong; one-sided doubts become a visible "check the start/end" reason. Scores are labelled `heuristic` / `heuristic+llm`, never presented as probabilities. Thresholds were tuned on the synthetic lecture — real-class tuning pending.
+
+## D-020 — Reframing: deterministic keyframes, hysteresis, fixed panel zoom
+Activity boxes (2 fps change map) and OCR text regions drive a virtual camera with dead zone, speed cap and easing; window switches are hard cuts. Lines wider than a 9:16 slice switch to a fixed 1200-px "panel" (one zoom level, ~0.9× at 1080-wide portrait) instead of zooming until code is cut. Layout changes need 3 consecutive samples (1.5 s). Keyframes are stored per highlight; manual drags add `manual` keyframes; the source is never modified.
