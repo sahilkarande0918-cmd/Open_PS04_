@@ -16,7 +16,12 @@ editor with a live 9:16 preview (intro / clip / outro), kit chooser in the Expor
 timeline, intro/outro cards, watermark, three caption presets, bundled OFL fonts. Evidence:
 TEST_STATUS → "Phase 04 — brand kits". Migration live on production (7/7).
 
-### Next task: captions export and timing check
+### Done: captions export, timing check, offline GSAP (D-029)
+
+### Next task: Phase 04 acceptance review
+Go through `docs/MASTER_PROMPT.md` Section 19 Phase 04 acceptance line by line against TEST_STATUS evidence; fix gaps (e.g. orphan one-word caption pages such as "hai." after a full page, thumbnail choice), render one highlight on **production** with a production brand kit, then mark Phase 04 and move to Phase 05 (topic → video).
+
+### Captions export and timing check (original plan, done)
 1. SRT and VTT export from the caption track (clip clock, page-sized cues), API `GET /renders/{id}/captions.{srt,vtt}` (signed) + Export panel links.
 2. Caption timing consistency check: compare word starts with audio onsets (energy rise) inside the clip; report median/max drift on the render row and warn in the UI over a threshold.
 3. Vendor GSAP into the render project (copy `gsap.min.js` from a pinned npm install) so renders work offline.

@@ -10,7 +10,7 @@ Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reas
 | 01 | Frontend, auth, database, deployment | 🟡 local ✅ · production E2E ✅ · second-account RLS ⬜ |
 | 02 | Recording ingestion & transcription | 🟡 synthetic-verified |
 | 03 | Highlights & screen intelligence (reframing) | 🟡 synthetic-verified |
-| 04 | Captions, branding, Hyperframes rendering | 🟡 render + captions ✅ · brand kits ✅ · SRT/VTT + timing check ⬜ |
+| 04 | Captions, branding, Hyperframes rendering | 🟡 render, captions, brand kits, SRT/VTT, timing check ✅ · acceptance review ⬜ |
 | 05 | Topic-to-video | ⬜ |
 | 06 | Advanced timeline editor | ⬜ |
 | 07 | Instagram & YouTube publishing | ⬜ |
@@ -91,7 +91,7 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 | API + UI (render, progress, inline player, signed download) | ✅ | browser on local stack |
 | Brand kits (colours, fonts, logo, intro/outro, handle, watermark, caption presets) | ✅ local | `brand_kits` + `/brand` editor with live preview; branded render verified (frames, durations, silent cards) |
 | Intro/outro cards | ✅ | cards in the main composition (D-028) |
-| SRT/VTT export | ⬜ | |
+| SRT/VTT export | ✅ | `GET /renders/{id}/captions?format=srt|vtt`; FFmpeg parses both (16 cues) |
 | Quality presets | ✅ draft / looks / delivery | Export panel |
-| Timing consistency check (caption words vs audio) | ⬜ | |
+| Timing consistency check (caption words vs audio) | ✅ | audio offset 0.0 ms + 100 % words on speech on real renders; sensitivity measured (D-029) |
 | Security fix: explicit table grants | ✅ | D-025, pgTAP 22/22 |

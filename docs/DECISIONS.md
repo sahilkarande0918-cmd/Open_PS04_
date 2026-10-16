@@ -112,3 +112,10 @@ One row per render: the timeline snapshot, its hash (render cache key), status a
 
 ## D-028 — Brand snapshot, intro/outro as cards in the main composition
 Each render copies the chosen kit (default kit, a specific kit, or none) into `timeline.brand`; editing a kit never changes finished reels. Intro and outro are full-frame cards in the same composition (not `data-composition-src` sub-compositions): the clip and captions are offset by the intro length, and GSAP animates the cards. Only bundled OFL fonts (Archivo, Poppins, Noto Sans; JetBrains Mono, Fira Code) are allowed, enforced by Zod, the DB check and the editor. Caption presets: highlight-word, karaoke (words keep the accent once spoken), boxed (solid panel).
+
+## D-029 — Subtitles from the timeline; timing check by audio correlation and voice overlap
+SRT/VTT are generated on request from the render's stored timeline (no files, no migration): the same caption pages the renderer burns in, on the composition clock (intro included); VTT escapes `<`, `>` and `&` so code survives. The render job then runs a timing check, stored in the job result:
+- **Audio offset**: FFT cross-correlation of the exported clip's audio against the same span of the source. A deliberate 100 ms trim error measures exactly 0.100 s; real renders measure 0.0 ms.
+- **Words on speech**: the share of caption words overlapping voiced 20 ms frames of the source. Correct timing scores 1.0; words shifted 0.5 s score 0.91 and 1 s scores 0.72, so the 0.95 threshold flags drifts of about 0.5 s or more. It cannot see smaller per-word errors (the measured mean is 0.27 s, D-016).
+
+A failed check is shown in the Export panel ("review before publishing") but never discards the render. GSAP 3.14.2 is now bundled into each render project, so renders need no internet.

@@ -76,4 +76,4 @@ Installed (1.104.1), service running, CLI at `C:\Program Files\Tailscale\tailsca
 
 ## Known limitations
 - Heavy processing (ASR, OCR, LLM, rendering) only runs while the owner's machine, API, worker and tunnel are up; the UI shows a truthful offline state otherwise.
-- Renders load GSAP from jsDelivr, so the processing machine needs internet while rendering.
+- Renders are self-contained (bundled GSAP and fonts); the processing machine needs internet only for the tunnel and Supabase.

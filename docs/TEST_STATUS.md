@@ -139,6 +139,17 @@ Recording: a 7.5-min Hinglish **physics** class (distance vs displacement), uplo
 | Analyze | ✅ | 1,970 windows scored, 76 OCR frames in 191 s, 11 screen-term fixes, LLM judged 9 / dropped 3, **6 highlights** of 33–46 s |
 | Heartbeat during the run | ✅ | `backend_endpoints` age 5–18 s; earlier `permission denied` lines all predate the service_role grant |
 
+## Phase 04 — subtitles, timing check, offline GSAP (2026-10-17, local stack)
+| Test | Result | Evidence |
+|------|--------|----------|
+| Unit: SRT/VTT cues, intro offset, VTT escaping, empty track; audio offset (known 120 ms shift, sign); words-on-speech | ✅ 4/4 (API total 53 passed, 6 skipped) | `pytest tests/test_captions_sync.py` |
+| Timing check on 3 existing real renders | ✅ | offset 0.0 ms, correlation 1.0, words on speech 1.0 (98, 98, 87 words), ~2.7 s each |
+| Sensitivity | ✅ measured | trim shifted 100 ms → measured 0.100 s; words shifted 0 / 0.5 / 1 / 3 s → 1.000 / 0.908 / 0.724 / 0.765 (clip 63 % voiced) → threshold 0.95 |
+| Render with bundled GSAP + kit through the UI | ✅ | 51.533 s vs 2 + 46.53 + 3; `index.html` loads `gsap.min.js` locally (0 CDN references); job result timing ok |
+| Export panel | ✅ | "Timing check passed · audio offset 0 ms vs the source · 100% of 87 caption words fall on speech"; SRT and VTT buttons → `GET …/captions?format=…` 200 |
+| Captions endpoint auth | ✅ | anonymous → 401 |
+| Subtitle files valid | ✅ | ffprobe: `subrip` 16 packets, `webvtt` 16 packets; first cue 00:00:02.000 (after the intro) |
+
 ## Phase 04 — brand kits (2026-10-17, local stack, synthetic lecture, test kit "Nimbu Academy (test kit)")
 | Test | Result | Evidence |
 |------|--------|----------|
