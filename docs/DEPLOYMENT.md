@@ -22,7 +22,8 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
 | Tunnel against the production backend | ✅ external `/health` 200 (DE, KZ, RU); `backend-probe` run 38950101996 all steps green | check-host.net; GitHub Actions |
 | Production Auth | ✅ signup enabled · ⚠️ email confirmation ON (`mailer_autoconfirm: false`): the built-in mailer reaches only members of the Supabase org | `GET /auth/v1/settings` |
 | Production signup → confirm → onboarding | ✅ (owner, 2026-10-17): 1 confirmed user, profile from trigger, workspace "Sahil Karande" with owner membership and `organization.created` audit event | service-client read (emails masked) |
-| Production project / upload / second-account RLS | ⬜ owner: create a project, refresh, upload a clip; RLS check needs a second account | |
+| Production project + upload + processing | ✅ (owner, 2026-10-17): project created and persisted after refresh; 75.3 MB / 449.9 s 1080p recording uploaded in 8 MiB chunks, ffprobed, `transcribe` and `analyze` jobs succeeded on attempt 1 on the local GPU; 1,689 words, 6 highlights | production rows + worker log |
+| Second-account RLS on production | ⬜ needs a second account (built-in mailer only reaches Supabase-org members) | |
 | Vercel `NEXT_PUBLIC_SUPABASE_URL` value | ✅ corrected by owner to `https://adjwycjsxtxvjockxtan.supabase.co` (was the REST endpoint (`…supabase.co/rest/v1/`), so signup failed with "Invalid path specified in request URL" (PostgREST PGRST125, reproduced) | owner screenshot 2026-10-17; fixed in code by `lib/supabase/env.ts` (origin only); owner should still set it to `https://adjwycjsxtxvjockxtan.supabase.co` |
 | Production ↔ backend with a real session | ⬜ owner E2E (step 5): needs a signed-in user, which the assistant may not create on a non-local site | |
 

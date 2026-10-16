@@ -128,6 +128,17 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | RLS pgTAP | ✅ 24/24 | `pnpm exec supabase test db` (adds render isolation, truncate refused, score edit refused, anon truncate refused, anon holds 0 grants) |
 | DB lint | ✅ | `supabase db lint --level warning` |
 
+## Production end to end (2026-10-17, owner's account, owner-supplied recording)
+Recording: a 7.5-min Hinglish **physics** class (distance vs displacement), uploaded by the owner. It is real speech, not synthetic, but provenance and licence are unknown to the assistant: it is not committed or redistributed. It is not a programming class, so it does not replace the PS's programming-class validation.
+| Step | Result | Evidence |
+|------|--------|----------|
+| Project create + persists after refresh | ✅ | `projects` row "Existing Lead" (mode recording) |
+| Upload through the production site | ✅ | `source_recordings`: 75,273,638 / 75,273,638 bytes, status `ready`, 449.9 s, 1920×1080 29.97 fps h264/aac |
+| Transcribe on the local GPU | ✅ | job attempt 1: 449.9 s in **38.8 s (11.6× real time)**, cuda, lang hi, 1,689 words, 15 segments |
+| Transcript quality (spot check) | ⚠️ good Roman Hinglish; formula miss | "Hello bachcho aaj badi simple si baat…"; "s = ut + ½at²" heard as "UT plus half **80** square" |
+| Analyze | ✅ | 1,970 windows scored, 76 OCR frames in 191 s, 11 screen-term fixes, LLM judged 9 / dropped 3, **6 highlights** of 33–46 s |
+| Heartbeat during the run | ✅ | `backend_endpoints` age 5–18 s; earlier `permission denied` lines all predate the service_role grant |
+
 ## Phase 04 — first task (2026-10-16, local stack, synthetic lecture)
 | Test | Result | Evidence |
 |------|--------|----------|

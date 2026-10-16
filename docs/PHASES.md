@@ -7,7 +7,7 @@ Legend: ✅ verified · 🟡 in progress · ⬜ not started · ⛔ blocked (reas
 | Phase | Title | Status |
 |-------|-------|--------|
 | 00 | Repository, contributors, foundation | ✅ |
-| 01 | Frontend, auth, database, deployment | 🟡 local ✅ · production blocked |
+| 01 | Frontend, auth, database, deployment | 🟡 local ✅ · production E2E ✅ · second-account RLS ⬜ |
 | 02 | Recording ingestion & transcription | 🟡 synthetic-verified |
 | 03 | Highlights & screen intelligence (reframing) | 🟡 synthetic-verified |
 | 04 | Captions, branding, Hyperframes rendering | 🟡 render + captions ✅ · brand kits ⬜ |

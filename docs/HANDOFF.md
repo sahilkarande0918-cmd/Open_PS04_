@@ -33,7 +33,7 @@ Details: `docs/ARCHITECTURE.md`. Decisions D-001…D-026: `docs/DECISIONS.md`.
 | Phase | Status | Verification |
 |-------|--------|--------------|
 | 00 Foundation | ✅ | repo, docs, Ponytail + Hallmark + Taste Skill, labels, 10 milestones; invitations: sahillokhande5841-cmyk ✅ accepted, SK999CodingWorld ✅ accepted, Atharva486dherange ⏳ pending |
-| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (RLS now 22/22). Production: pages 200 / protected 307; remote 6/6 migrations (15 tables, RLS on all, explicit grants); backend runs against production with a live heartbeat; production E2E with a real account pending (owner); public tunnel ✅ (Dev Tunnels, verified from outside) |
+| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (RLS now 22/22). Production: pages 200 / protected 307; remote 6/6 migrations (15 tables, RLS on all, explicit grants); backend on production with a live heartbeat; production signup → workspace → project → 75 MB upload → transcribe → analyze ✅ (owner, 2026-10-17); second-account RLS check pending; public tunnel ✅ (Dev Tunnels, verified from outside) |
 | 02 Ingestion + transcription | 🟡 synthetic-verified | all acceptance steps pass on the generated lecture; real classroom validation not done |
 | 03 Highlights + reframing | 🟡 synthetic-verified | OCR correction, highlights, reframing, UI pass on fixtures; diagram/slide footage not covered |
 | 04 Captions/branding/render | 🟡 | first task ✅: selected highlight → 1080×1920 H.264/AAC MP4 with crop camera + word captions (two highlights rendered, crash-retry, cache, signed download). Brand kits next |
