@@ -33,3 +33,6 @@ Everything must run at ₹0. No paid APIs, cloud rendering, paid hosting or bill
 ## Workflow
 - Branches `feature/<name>` / `fix/<name>`, PRs into `main`, conventional commits.
 - Run lint, typecheck and tests before pushing. Don't force-push shared branches.
+
+## Codex sprint handoff (2026-10-17)
+When Codex takes over, first read `docs/CODEX_HANDOFF.md`, plus the original PS and full master prompt as described there. That document is a **priority overlay**, not permission to remove auth/RLS, fake successful posts or replace real tests with UI mockups. Keep actual human authorship; no AI attribution in team/commit metadata. Read actual repository status before acting, as Claude and Codex may work on the same branch at different times.
