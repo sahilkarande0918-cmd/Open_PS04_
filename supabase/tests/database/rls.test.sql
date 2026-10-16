@@ -1,7 +1,7 @@
 -- RLS isolation tests. Run: pnpm exec supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(24);
 
 -- two users, each in their own org
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -80,6 +80,12 @@ select throws_ok($$ truncate public.jobs $$, '42501', null, 'signed-in users can
 select throws_ok($$ truncate public.projects $$, '42501', null, 'signed-in users cannot truncate projects');
 select throws_ok($$ update public.highlight_candidates set score = 1 $$, '42501', null, 'highlight scores are not user-editable');
 reset role;
+-- the publishable key is public: the anon role must hold no table privileges at all
+set local role anon;
+select throws_ok($$ truncate public.source_recordings $$, '42501', null, 'anonymous callers cannot truncate recordings');
+reset role;
+select is((select count(*)::int from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public'),
+  0, 'anon holds no table grants in public');
 
 -- claim works for the service path and is exclusive
 select is((select (public.claim_next_job('w1')).status::text), 'running', 'worker claims queued job');

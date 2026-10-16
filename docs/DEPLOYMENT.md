@@ -1,6 +1,6 @@
 # Deployment
 
-_Verified 2026-10-16 (session 2). This file is the single source of truth for deployment state._
+_Verified 2026-10-17 (session 2, after the owner's first push). This file is the single source of truth for deployment state._
 
 ## Current state
 | Piece | State | Evidence |
@@ -11,10 +11,12 @@ _Verified 2026-10-16 (session 2). This file is the single source of truth for de
 | Protected routes | ✅ `/dashboard`, `/projects` → 307 `/login?next=…` | curl, session 2 |
 | Vercel env vars | ✅ set by owner (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`) | values not readable by the assistant |
 | Supabase CLI link | ✅ `adjwycjsxtxvjockxtan` (project "reel.studio'org", org `yqdlgjynocbxxsmzeesy`) | `supabase/.temp/project-ref` |
-| Remote migrations | ⛔ **none applied**; 5 pending | `supabase migration list --linked`; `db push --dry-run` |
+| Remote migrations | 🟡 **3 of 5 applied** (`…120000`, `…140000`, `…160000`); `…180000_render_jobs` and `…190000_explicit_grants` pending | `supabase migration list --linked`; `db push --dry-run` |
+| Remote schema | ✅ 14 tables, RLS enabled on all 14, 26 policies | `supabase db dump --linked --schema public` (read-only) |
+| Remote grants | ⛔ **security hole live until `…190000` is applied**: `anon` (anyone with the public key) holds TRUNCATE on 6 tables (`source_recordings`, `transcripts`, `transcript_words`, `transcript_segments`, `highlight_candidates`, `technical_glossaries`); `authenticated` holds TRUNCATE on all 14 | same dump; the pending migration revokes all of it (local: `anon` 0 grants, pgTAP 24/24) |
 | Remote Auth URL config / email confirmation | ⬜ not verified (needs dashboard) | |
 | Public backend tunnel | ✅ Microsoft Dev Tunnels, stable URL `https://j96sqlp6-8000.inc1.devtunnels.ms` | external probes 200; `backend-probe` workflow passed |
-| Backend data source | ⚠️ still the **local** Supabase stack | `apps/api/.env` `SUPABASE_URL=http://127.0.0.1:54321` |
+| Backend data source | ⚠️ still the **local** Supabase stack: `C:\dev\Reel-Studio\apps\api\.env` has `SUPABASE_URL=http://127.0.0.1:54321` (last modified 23:32 by the assistant's `ALLOWED_ORIGINS` edit; no env file in the repo references the remote project) | file check 2026-10-17 |
 | Production ↔ backend | ⬜ needs remote migrations and the backend switched to the remote project | |
 
 ## Owner actions, in order
@@ -22,7 +24,7 @@ _Verified 2026-10-16 (session 2). This file is the single source of truth for de
    ```
    pnpm exec supabase db push --linked
    ```
-   This applies `20261016120000_identity_orgs_jobs`, `…140000_recordings_transcripts`, `…160000_highlights`, `…180000_render_jobs` and `…190000_explicit_grants` (the security fix: without it any signed-in user could TRUNCATE tables). Then confirm with `pnpm exec supabase migration list --linked`, where every row needs a remote timestamp.
+   Run it again **from `C:\dev\Reel-Studio`** (the first push applied only 3 migrations). It applies `…180000_render_jobs` and `…190000_explicit_grants`, the security fix: until then anyone can TRUNCATE six production tables. Then confirm with `pnpm exec supabase migration list --linked`, where all 5 rows need a remote timestamp.
 2. **Auth → URL Configuration** (Reel-Studio dashboard; may need the Owner account): Site URL `https://reel-studio-taupe.vercel.app`; Redirect URLs `https://reel-studio-taupe.vercel.app/**` and `http://localhost:3000/**`.
 3. **Email confirmation** (decision for the owner): with confirmation on, Supabase's built-in mailer only delivers to the project team's addresses at a low hourly rate, so judges cannot sign up. The options:
    - (a) Keep it on and demo with team accounts.
@@ -30,7 +32,7 @@ _Verified 2026-10-16 (session 2). This file is the single source of truth for de
    - (c) Turn "Confirm email" off for the demo. Anyone can then register any address without proving they own it (spam accounts, typo'd emails, no recovery guarantee), but RLS still isolates every account's data.
 
    Recommended: (b) if time allows, else (c) for the judging window only.
-4. **Switch the backend to production**: in `apps/api/.env` (git-ignored, this machine only) set `SUPABASE_URL=https://adjwycjsxtxvjockxtan.supabase.co` and `SUPABASE_SECRET_KEY=` the Reel-Studio **secret** key (Project Settings → API Keys). Type it into the file yourself; never paste it into chat. `ALLOWED_ORIGINS` already includes the Vercel domain. Restart the backend (below).
+4. **Switch the backend to production**: in `C:\dev\Reel-Studio\apps\api\.env` (git-ignored, this machine only; save the file) set `SUPABASE_URL=https://adjwycjsxtxvjockxtan.supabase.co` and `SUPABASE_SECRET_KEY=` the Reel-Studio **secret** key (Project Settings → API Keys). Type it into the file yourself; never paste it into chat. `ALLOWED_ORIGINS` already includes the Vercel domain. Restart the backend (below).
 5. **Test on production** (the assistant cannot enter passwords or create accounts on a non-local site):
    - sign up, then log in and log out;
    - create a workspace and a project, then refresh and check the project persists;

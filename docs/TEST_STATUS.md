@@ -100,7 +100,12 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | Check | Result | Evidence |
 |-------|--------|----------|
 | Supabase CLI link | ✅ linked to `adjwycjsxtxvjockxtan` (org `yqdlgjynocbxxsmzeesy`) | `supabase/.temp/project-ref`, `linked-project.json` |
-| Remote migrations | ⛔ **not applied** — remote column empty for all migrations; no public tables | `supabase migration list --linked`, `inspect db table-stats --linked` (0 rows), `db push --dry-run` lists all |
+| Remote migrations (before owner push) | ⛔ none applied | `supabase migration list --linked`, `inspect db table-stats --linked` (0 rows) |
+| Remote migrations (after owner push, 2026-10-17) | 🟡 3/5 applied; `render_jobs` + `explicit_grants` pending | `migration list --linked`; `db push --dry-run` lists the 2 |
+| Remote schema | ✅ 14 tables, RLS on 14/14, 26 policies | `supabase db dump --linked --schema public` |
+| Remote grants | ❌ `anon` TRUNCATE on 6 tables, `authenticated` TRUNCATE on 14 (fix pending in `…190000`) | same dump |
+| Second push by the assistant | ⛔ blocked by the permission classifier | — |
+| Backend switched to remote | ⛔ `apps/api/.env` still local (no env file references the remote project) | file check |
 | Remote `db push` by the assistant | ⛔ blocked by the session's permission classifier; owner runs it | — |
 | Remote auth settings / API keys | ⛔ publishable key from session 1 now returns `Invalid API key`; CLI key listing blocked | `GET /auth/v1/settings` 401 |
 | Production signup/login/logout E2E | ⬜ owner must run it (the assistant may not enter passwords or create accounts on a non-local site); needs migrations first | — |
@@ -112,7 +117,7 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | Same-machine fallback | ✅ | local browser: tunnel `/health` status 0 (TLS intercepted) → `127.0.0.1:8000` 200, badge online |
 | Upload integration with 8 MiB chunks | ✅ 6/6 | `RS_INTEGRATION=1 pytest tests/test_upload_integration.py` |
 | Default table privileges | ❌→✅ fixed | `authenticated` had TRUNCATE/UPDATE on every table; after `20261016190000_explicit_grants.sql` only the intended grants remain (`information_schema.role_table_grants`) |
-| RLS pgTAP | ✅ 22/22 | `pnpm exec supabase test db` (adds render isolation, truncate refused, score edit refused) |
+| RLS pgTAP | ✅ 24/24 | `pnpm exec supabase test db` (adds render isolation, truncate refused, score edit refused, anon truncate refused, anon holds 0 grants) |
 | DB lint | ✅ | `supabase db lint --level warning` |
 
 ## Phase 04 — first task (2026-10-16, local stack, synthetic lecture)
