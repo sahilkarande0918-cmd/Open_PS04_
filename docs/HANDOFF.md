@@ -33,7 +33,7 @@ Details: `docs/ARCHITECTURE.md`. Decisions D-001…D-026: `docs/DECISIONS.md`.
 | Phase | Status | Verification |
 |-------|--------|--------------|
 | 00 Foundation | ✅ | repo, docs, Ponytail + Hallmark + Taste Skill, labels, 10 milestones; invitations: sahillokhande5841-cmyk ✅ accepted, SK999CodingWorld ✅ accepted, Atharva486dherange ⏳ pending |
-| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (RLS now 22/22). Production: pages 200 / protected 307; remote has 5/6 migrations (15 tables, RLS on all, anon/authenticated grants fixed); service_role grants migration pending, so the backend is denied on production; public tunnel ✅ (Dev Tunnels, verified from outside) |
+| 01 Frontend/auth/DB/deploy | 🟡 | local stack: fully verified (RLS now 22/22). Production: pages 200 / protected 307; remote 6/6 migrations (15 tables, RLS on all, explicit grants); backend runs against production with a live heartbeat; production E2E with a real account pending (owner); public tunnel ✅ (Dev Tunnels, verified from outside) |
 | 02 Ingestion + transcription | 🟡 synthetic-verified | all acceptance steps pass on the generated lecture; real classroom validation not done |
 | 03 Highlights + reframing | 🟡 synthetic-verified | OCR correction, highlights, reframing, UI pass on fixtures; diagram/slide footage not covered |
 | 04 Captions/branding/render | 🟡 | first task ✅: selected highlight → 1080×1920 H.264/AAC MP4 with crop camera + word captions (two highlights rendered, crash-retry, cache, signed download). Brand kits next |
@@ -158,9 +158,8 @@ latest production deployment `dpl_8kA8nFpHbdXaxCMX8un2vNi2iu2e` (commit `9a4ee55
 `https://j96sqlp6-8000.inc1.devtunnels.ms` (backend still on the local Supabase stack). Every push to `main` auto-deploys.
 
 ## 17. Owner actions needed (no secrets in chat)
-1. Supabase: `pnpm exec supabase db push --linked` from `C:\dev\Reel-Studio` (NOT the stale OneDrive `Reel Studio` copy)
-   to apply `20261017000000_service_role_rpcs` (without it the backend gets permission denied on production). The
-   assistant's pushes are blocked by its permission classifier. Verify with `migration list --linked`.
+1. Supabase: done, 6/6 migrations live. Future migrations: `pnpm exec supabase db push --linked` from
+   `C:\dev\Reel-Studio` (NOT the stale OneDrive `Reel Studio` copy); the assistant's pushes are blocked by its classifier.
 2. Supabase Auth: Site URL + redirect URLs; decide on email confirmation (options and trade-offs in DEPLOYMENT.md).
 3. Put the Reel-Studio `SUPABASE_URL` + secret key into `apps/api/.env` yourself, restart `app.serve --tunnel devtunnel`,
    then test signup → workspace → project → upload on production (the assistant may not enter passwords on non-local

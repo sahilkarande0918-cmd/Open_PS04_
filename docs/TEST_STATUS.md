@@ -108,6 +108,10 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | Remote after second owner push | ✅ 5/5 applied; `anon` 0 table grants, `authenticated` no TRUNCATE, RLS 15/15 | `migration list --linked`; schema dump |
 | Backend against production | ❌ `permission denied for table backend_endpoints` and `for function requeue_stale_jobs`: hosted secure-by-default privileges give service_role no DML/EXECUTE | backend log; dump; fix migration `20261017000000` pending owner push |
 | RLS pgTAP | ✅ 28/28 | adds service_role RPC + DML assertions (the local stack's defaults hide this class of bug; the assertions guard against grant regressions) |
+| Remote after third owner push | ✅ 6/6 migrations | `migration list --linked` |
+| Backend on production | ✅ heartbeat row = tunnel URL (age 7 s); table reads OK; `requeue_stale_jobs` 0; `claim_next_job` (probe type) returns empty row; no worker poll failures after the push | service client + worker log |
+| External probe against production-configured backend | ✅ run 38950101996: health+CORS, preflight, anon 401, 8 MiB relay, video no-interstitial | GitHub Actions |
+| Production auth settings | ✅ signup on · ⚠️ confirm-email on | `/auth/v1/settings` |
 | Remote `db push` by the assistant | ⛔ blocked by the session's permission classifier; owner runs it | — |
 | Remote auth settings / API keys | ⛔ publishable key from session 1 now returns `Invalid API key`; CLI key listing blocked | `GET /auth/v1/settings` 401 |
 | Production signup/login/logout E2E | ⬜ owner must run it (the assistant may not enter passwords or create accounts on a non-local site); needs migrations first | — |
