@@ -112,6 +112,7 @@ Fixture `react-hooks-hinglish`: 192.5 s, 1920×1080 30 fps, Roman-Hinglish narra
 | Backend on production | ✅ heartbeat row = tunnel URL (age 7 s); table reads OK; `requeue_stale_jobs` 0; `claim_next_job` (probe type) returns empty row; no worker poll failures after the push | service client + worker log |
 | External probe against production-configured backend | ✅ run 38950101996: health+CORS, preflight, anon 401, 8 MiB relay, video no-interstitial | GitHub Actions |
 | Production auth settings | ✅ signup on · ⚠️ confirm-email on | `/auth/v1/settings` |
+| Production signup (owner) | ❌ "Invalid path specified in request URL": Vercel URL var ends in `/rest/v1/`; base `…/rest/v1` + `/auth/v1/signup` → PGRST125 reproduced, plain origin → GoTrue | probe with backend key, empty body |
 | Remote `db push` by the assistant | ⛔ blocked by the session's permission classifier; owner runs it | — |
 | Remote auth settings / API keys | ⛔ publishable key from session 1 now returns `Invalid API key`; CLI key listing blocked | `GET /auth/v1/settings` 401 |
 | Production signup/login/logout E2E | ⬜ owner must run it (the assistant may not enter passwords or create accounts on a non-local site); needs migrations first | — |

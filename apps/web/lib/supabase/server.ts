@@ -3,10 +3,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { SUPABASE_KEY, SUPABASE_URL } from "./env";
 
 export async function createClient() {
   const cookieStore = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(toSet) {

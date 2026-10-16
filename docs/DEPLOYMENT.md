@@ -22,6 +22,7 @@ _Verified 2026-10-17 (session 2, after the owner's first push). This file is the
 | Tunnel against the production backend | ✅ external `/health` 200 (DE, KZ, RU); `backend-probe` run 38950101996 all steps green | check-host.net; GitHub Actions |
 | Production Auth | ✅ signup enabled · ⚠️ email confirmation ON (`mailer_autoconfirm: false`): the built-in mailer reaches only members of the Supabase org | `GET /auth/v1/settings` |
 | Production data | empty (0 profiles/orgs/projects) until the first signup | service-client counts |
+| Vercel `NEXT_PUBLIC_SUPABASE_URL` value | ❌ set to the REST endpoint (`…supabase.co/rest/v1/`), so signup failed with "Invalid path specified in request URL" (PostgREST PGRST125, reproduced) | owner screenshot 2026-10-17; fixed in code by `lib/supabase/env.ts` (origin only); owner should still set it to `https://adjwycjsxtxvjockxtan.supabase.co` |
 | Production ↔ backend with a real session | ⬜ owner E2E (step 5): needs a signed-in user, which the assistant may not create on a non-local site | |
 
 ## Owner actions, in order
