@@ -1,7 +1,7 @@
 -- RLS isolation tests. Run: pnpm exec supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(22);
 
 -- two users, each in their own org
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -60,6 +60,25 @@ select throws_ok($$ select public.claim_next_job('w1') $$, '42501', null, 'authe
 reset role;
 select pg_temp.login('22222222-2222-2222-2222-222222222222');
 select is((select count(*)::int from public.jobs), 0, 'bob cannot see alpha jobs');
+reset role;
+
+-- Render exports: members read their org's renders; outsiders see nothing and nobody writes via the API key
+insert into public.render_jobs (organization_id, project_id, created_by, timeline, timeline_hash)
+  select p.organization_id, p.id, '11111111-1111-1111-1111-111111111111', '{}', 'h1'
+  from public.projects p where p.name = 'Alpha project';
+select pg_temp.login('11111111-1111-1111-1111-111111111111');
+select is((select count(*)::int from public.render_jobs), 1, 'alice sees her org render');
+select throws_ok($$ update public.render_jobs set status = 'ready' $$, '42501', null, 'members cannot mark renders ready');
+reset role;
+select pg_temp.login('22222222-2222-2222-2222-222222222222');
+select is((select count(*)::int from public.render_jobs), 0, 'bob cannot see alpha renders');
+reset role;
+
+-- Grants: TRUNCATE bypasses RLS and must never be available; locked columns stay locked
+select pg_temp.login('11111111-1111-1111-1111-111111111111');
+select throws_ok($$ truncate public.jobs $$, '42501', null, 'signed-in users cannot truncate jobs');
+select throws_ok($$ truncate public.projects $$, '42501', null, 'signed-in users cannot truncate projects');
+select throws_ok($$ update public.highlight_candidates set score = 1 $$, '42501', null, 'highlight scores are not user-editable');
 reset role;
 
 -- claim works for the service path and is exclusive
