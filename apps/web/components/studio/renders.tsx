@@ -34,6 +34,20 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
   const backend = useBackend();
   const base = backend.data?.state === "online" ? backend.data.url : null;
   const [quality, setQuality] = useState<keyof typeof QUALITY>("looks");
+  const [kitChoice, setKitChoice] = useState<string>(""); // "" = organisation default, "none" = no branding
+  const kits = useQuery({
+    queryKey: ["brand-kit-names", projectId],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sb = createClient();
+      const { data: project, error: pe } = await sb.from("projects").select("organization_id").eq("id", projectId).single();
+      if (pe) throw pe;
+      const { data, error } = await sb.from("brand_kits").select("id, name, is_default").eq("organization_id", project.organization_id).order("created_at");
+      if (error) throw error;
+      return data as { id: string; name: string; is_default: boolean }[];
+    },
+  });
+  const defaultKit = kits.data?.find((k) => k.is_default);
   const [error, setError] = useState<string | null>(null);
   const key = ["renders", highlightId];
 
@@ -81,7 +95,7 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
     const r = await apiFetch(base, `/highlights/${highlightId}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quality }),
+      body: JSON.stringify({ quality, brand_kit_id: kitChoice || null }),
     });
     if (!r.ok) setError((await r.json()).detail ?? `Render refused (${r.status})`);
     qc.invalidateQueries({ queryKey: key });
@@ -103,6 +117,15 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
         <h3 className="mr-auto text-[15px]">Export</h3>
         {canEdit && (
           <>
+            <label className="text-muted">
+              Brand{" "}
+              <select value={kitChoice} onChange={(e) => setKitChoice(e.target.value)}
+                className="ml-1 max-w-[180px] rounded-[4px] bg-surface-2 px-2 py-1.5 text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                <option value="">{defaultKit ? `${defaultKit.name} (default)` : "Default (none set)"}</option>
+                {kits.data?.filter((k) => !k.is_default).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+                <option value="none">No branding</option>
+              </select>
+            </label>
             <label className="text-muted">
               Quality{" "}
               <select value={quality} onChange={(e) => setQuality(e.target.value as keyof typeof QUALITY)}

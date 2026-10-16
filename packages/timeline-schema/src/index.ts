@@ -69,15 +69,31 @@ export const Track = z.object({
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
+/** Fonts bundled with the renderer (SIL OFL); renders never load remote fonts. */
+export const BODY_FONTS = ["Archivo", "Poppins", "Noto Sans"] as const;
+export const CODE_FONTS = ["JetBrains Mono", "Fira Code"] as const;
+
+/** Snapshot of an institute brand kit, copied into the timeline when a render is requested. */
 export const Brand = z.object({
   name: z.string().max(80).default(""),
   handle: z.string().max(40).default(""),
   colors: z.object({ background: color, text: color, accent: color }),
-  fonts: z.object({ body: z.string().min(1), code: z.string().min(1) }),
+  fonts: z.object({ body: z.enum(BODY_FONTS), code: z.enum(CODE_FONTS) }),
+  /** Asset id of the logo image, if the kit has one. */
+  logoAssetId: z.string().min(1).optional(),
+  watermark: z
+    .object({ enabled: z.boolean(), position: z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]) })
+    .default({ enabled: false, position: "top-right" }),
+  /** Title card before the clip; `title` is already resolved (no template placeholders). */
+  intro: z.object({ enabled: z.boolean(), duration: z.number().min(1).max(5), title: z.string().max(80) })
+    .default({ enabled: false, duration: 2, title: "" }),
+  /** Closing card after the clip. */
+  outro: z.object({ enabled: z.boolean(), duration: z.number().min(1).max(6), cta: z.string().max(80) })
+    .default({ enabled: false, duration: 3, cta: "" }),
 });
 
 export const CaptionStyle = z.object({
-  preset: z.enum(["highlight-word"]).default("highlight-word"),
+  preset: z.enum(["highlight-word", "karaoke", "boxed"]).default("highlight-word"),
   fontSize: z.number().int().min(24).max(120).default(64),
   maxCharsPerLine: z.number().int().min(10).max(60).default(32),
   maxLines: z.number().int().min(1).max(3).default(2),
@@ -94,6 +110,7 @@ export const Composition = z
   .object({
     id: z.string().min(1),
     schemaVersion: z.literal(SCHEMA_VERSION),
+    title: z.string().max(120).default(""),
     fps: z.union([z.literal(24), z.literal(30), z.literal(60)]).default(30),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
@@ -106,6 +123,8 @@ export const Composition = z
     renderSettings: RenderSettings,
   })
   .superRefine((c, ctx) => {
+    if (c.brand.logoAssetId && !c.assets[c.brand.logoAssetId])
+      ctx.addIssue({ code: "custom", path: ["brand", "logoAssetId"], message: `unknown asset ${c.brand.logoAssetId}` });
     c.tracks.forEach((track, ti) =>
       track.items.forEach((item, ii) => {
         const path = ["tracks", ti, "items", ii];

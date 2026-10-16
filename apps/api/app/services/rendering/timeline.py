@@ -2,6 +2,8 @@
 word-level captions from the corrected transcript. Validated against the schema generated from
 `packages/timeline-schema` (Zod is the source of truth)."""
 
+import base64
+import binascii
 import hashlib
 import json
 import re
@@ -18,7 +20,12 @@ DEFAULT_BRAND = {
     "handle": "",
     "colors": {"background": "#0d0f12", "text": "#ffffff", "accent": "#f5a524"},
     "fonts": {"body": "Archivo", "code": "JetBrains Mono"},
+    "watermark": {"enabled": False, "position": "top-right"},
+    "intro": {"enabled": False, "duration": 2, "title": ""},
+    "outro": {"enabled": False, "duration": 3, "cta": ""},
 }
+LOGO_TYPES = {"png": "png", "jpeg": "jpg", "webp": "webp", "svg+xml": "svg"}
+LOGO_MAX_BYTES = 300 * 1024
 CAPTION_STYLE = {
     "preset": "highlight-word",
     "fontSize": 60,
@@ -43,15 +50,60 @@ def _schema() -> dict:
 def validate(doc: dict) -> None:
     """JSON Schema shape check, then the cross-field rules Zod's superRefine enforces in TS."""
     jsonschema.validate(doc, _schema())
+    logo = doc["brand"].get("logoAssetId")
+    if logo and logo not in doc["assets"]:
+        raise jsonschema.ValidationError(f"unknown asset {logo}")
     for track in doc["tracks"]:
         for item in track["items"]:
             if item["start"] + item["duration"] > doc["duration"] + 1e-3:
                 raise jsonschema.ValidationError(f"item {item['id']} ends after the composition")
             if item["type"] == "video":
+                if item["start"] < 0:
+                    raise jsonschema.ValidationError("video item starts before the composition")
                 if item["assetId"] not in doc["assets"]:
                     raise jsonschema.ValidationError(f"unknown asset {item['assetId']}")
                 if abs(item["sourceEnd"] - item["sourceStart"] - item["duration"]) > 1e-3:
                     raise jsonschema.ValidationError("duration must equal sourceEnd - sourceStart")
+
+
+def logo_file(data_url: str) -> tuple[str, bytes]:
+    """Decode a kit logo data URL → (file name, bytes). The name carries a content hash, so a changed logo
+    changes the timeline (and the render cache key)."""
+    m = re.fullmatch(r"data:image/(png|jpeg|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)", data_url or "")
+    if not m:
+        raise ValueError("logo must be a base64 PNG, JPEG, WebP or SVG data URL")
+    try:
+        data = base64.b64decode(m.group(2), validate=True)
+    except binascii.Error as e:
+        raise ValueError("logo is not valid base64") from e
+    if not data or len(data) > LOGO_MAX_BYTES:
+        raise ValueError("logo must be 1 byte to 300 KB")
+    return f"logo-{hashlib.sha256(data).hexdigest()[:12]}.{LOGO_TYPES[m.group(1)]}", data
+
+
+def brand_snapshot(kit: dict | None, title: str) -> tuple[dict, str]:
+    """Timeline brand + caption preset from a brand_kits row (None → neutral defaults, no intro/outro)."""
+    if not kit:
+        return DEFAULT_BRAND, "highlight-word"
+    intro, outro = kit["intro"], kit["outro"]
+    brand = {
+        "name": kit["name"],
+        "handle": kit.get("handle") or "",
+        "colors": kit["colors"],
+        "fonts": kit["fonts"],
+        "watermark": kit["watermark"],
+        "intro": {
+            "enabled": bool(intro.get("enabled")),
+            "duration": float(intro.get("duration", 2)),
+            "title": (intro.get("title") or "{title}").replace("{title}", title)[:80],
+        },
+        "outro": {
+            "enabled": bool(outro.get("enabled")),
+            "duration": float(outro.get("duration", 3)),
+            "cta": (outro.get("cta") or "")[:80],
+        },
+    }
+    return brand, kit.get("caption_preset") or "highlight-word"
 
 
 def caption_words(words: list[dict], start: float, end: float) -> list[dict]:
@@ -69,10 +121,34 @@ def caption_words(words: list[dict], start: float, end: float) -> list[dict]:
 
 
 def build(
-    highlight: dict, recording: dict, words: list[dict], render_id: str, quality: str = "looks"
+    highlight: dict,
+    recording: dict,
+    words: list[dict],
+    render_id: str,
+    quality: str = "looks",
+    kit: dict | None = None,
+    logo_src: str | None = None,
 ) -> dict:
+    """`logo_src` is the logo file name the caller wrote into the render directory (see `logo_file`)."""
     start, end = float(highlight["start_s"]), float(highlight["end_s"])
     duration = round(end - start, 3)
+    title = (highlight.get("title") or "")[:120]
+    brand, preset = brand_snapshot(kit, title)
+    lead = brand["intro"]["duration"] if brand["intro"]["enabled"] else 0.0
+    tail = brand["outro"]["duration"] if brand["outro"]["enabled"] else 0.0
+    assets = {
+        "source": {
+            "id": "source",
+            "kind": "video",
+            "src": "source" + Path(recording["filename"]).suffix.lower(),
+            "width": recording["width"],
+            "height": recording["height"],
+            "duration": recording.get("duration_s") or end,
+        }
+    }
+    if logo_src:
+        assets["logo"] = {"id": "logo", "kind": "image", "src": logo_src}
+        brand = {**brand, "logoAssetId": "logo"}
     keyframes = highlight.get("crop_keyframes") or []
     if not keyframes:  # centred 9:16 window
         cw = int(round(recording["height"] * 9 / 16 / 2) * 2)
@@ -95,18 +171,10 @@ def build(
         "fps": 30,
         "width": W,
         "height": H,
-        "duration": duration,
+        "title": title,
+        "duration": round(lead + duration + tail, 3),
         "source": {"recordingId": recording["id"], "highlightId": highlight["id"]},
-        "assets": {
-            "source": {
-                "id": "source",
-                "kind": "video",
-                "src": "source" + Path(recording["filename"]).suffix.lower(),
-                "width": recording["width"],
-                "height": recording["height"],
-                "duration": recording.get("duration_s") or end,
-            }
-        },
+        "assets": assets,
         "tracks": [
             {
                 "id": "video",
@@ -116,7 +184,7 @@ def build(
                         "id": "clip",
                         "type": "video",
                         "assetId": "source",
-                        "start": 0,
+                        "start": lead,
                         "duration": duration,
                         "sourceStart": start,
                         "sourceEnd": round(start + duration, 3),
@@ -132,15 +200,15 @@ def build(
                     {
                         "id": "captions",
                         "type": "caption",
-                        "start": 0,
+                        "start": lead,
                         "duration": duration,
                         "words": caption_words(words, start, end),
                     }
                 ],
             },
         ],
-        "brand": DEFAULT_BRAND,
-        "captionStyle": CAPTION_STYLE,
+        "brand": brand,
+        "captionStyle": {**CAPTION_STYLE, "preset": preset},
         "renderSettings": {"quality": quality},
     }
     validate(doc)

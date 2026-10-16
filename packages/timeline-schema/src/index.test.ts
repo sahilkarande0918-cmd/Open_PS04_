@@ -28,7 +28,7 @@ const valid = () => ({
     },
     { id: "c", kind: "caption", items: [{ id: "cap", type: "caption", start: 0, duration: 10, words: [{ text: "AbortController", start: 1, end: 1.6, isCode: true }] }] },
   ],
-  brand: { colors: { background: "#0d0f12", text: "#ffffff", accent: "#ffcc00" }, fonts: { body: "RS Sans", code: "RS Mono" } },
+  brand: { colors: { background: "#0d0f12", text: "#ffffff", accent: "#ffcc00" }, fonts: { body: "Archivo", code: "JetBrains Mono" } },
   captionStyle: {},
   renderSettings: {},
 });
@@ -65,6 +65,25 @@ describe("Composition", () => {
     const doc = valid();
     doc.assets.src.src = "../../etc/passwd";
     expect(() => parseComposition(doc)).toThrow();
+  });
+
+  it("fills brand defaults: no watermark, intro or outro unless the kit asks", () => {
+    const c = parseComposition(valid());
+    expect(c.brand.watermark.enabled).toBe(false);
+    expect(c.brand.intro.enabled).toBe(false);
+    expect(c.brand.outro.enabled).toBe(false);
+    expect(c.title).toBe("");
+  });
+
+  it("only allows bundled fonts and existing logo assets", () => {
+    const font = valid();
+    (font.brand.fonts as { body: string }).body = "Comic Sans MS";
+    expect(() => parseComposition(font)).toThrow();
+    const logo = valid() as ReturnType<typeof valid> & { brand: { logoAssetId?: string } };
+    logo.brand.logoAssetId = "logo";
+    expect(Composition.safeParse(logo).error?.issues[0].message).toMatch(/unknown asset logo/);
+    (logo.assets as Record<string, unknown>).logo = { id: "logo", kind: "image", src: "logo.png" };
+    expect(Composition.safeParse(logo).success).toBe(true);
   });
 
   it("committed timeline.schema.json matches the Zod schema", () => {

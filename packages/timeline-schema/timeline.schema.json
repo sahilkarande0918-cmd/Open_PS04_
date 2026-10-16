@@ -10,6 +10,11 @@
       "type": "number",
       "const": 1
     },
+    "title": {
+      "default": "",
+      "type": "string",
+      "maxLength": 120
+    },
     "fps": {
       "default": 30,
       "anyOf": [
@@ -343,16 +348,106 @@
           "properties": {
             "body": {
               "type": "string",
-              "minLength": 1
+              "enum": [
+                "Archivo",
+                "Poppins",
+                "Noto Sans"
+              ]
             },
             "code": {
               "type": "string",
-              "minLength": 1
+              "enum": [
+                "JetBrains Mono",
+                "Fira Code"
+              ]
             }
           },
           "required": [
             "body",
             "code"
+          ]
+        },
+        "logoAssetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "watermark": {
+          "default": {
+            "enabled": false,
+            "position": "top-right"
+          },
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "position": {
+              "type": "string",
+              "enum": [
+                "top-left",
+                "top-right",
+                "bottom-left",
+                "bottom-right"
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "position"
+          ]
+        },
+        "intro": {
+          "default": {
+            "enabled": false,
+            "duration": 2,
+            "title": ""
+          },
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "enabled",
+            "duration",
+            "title"
+          ]
+        },
+        "outro": {
+          "default": {
+            "enabled": false,
+            "duration": 3,
+            "cta": ""
+          },
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "cta": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "enabled",
+            "duration",
+            "cta"
           ]
         }
       },
@@ -368,7 +463,9 @@
           "default": "highlight-word",
           "type": "string",
           "enum": [
-            "highlight-word"
+            "highlight-word",
+            "karaoke",
+            "boxed"
           ]
         },
         "fontSize": {

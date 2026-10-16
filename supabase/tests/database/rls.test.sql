@@ -1,7 +1,7 @@
 -- RLS isolation tests. Run: pnpm exec supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(34);
 
 -- two users, each in their own org
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -93,6 +93,25 @@ select ok(has_function_privilege('service_role', 'public.requeue_stale_jobs(inte
 
 select ok(has_table_privilege('service_role', 'public.backend_endpoints', 'select, insert, update'), 'service_role can write the backend heartbeat');
 select ok(has_table_privilege('service_role', 'public.render_jobs', 'select, insert, update, delete'), 'service_role can manage renders');
+
+-- Brand kits: editors write their own org's kits, one default per org, values validated, outsiders see nothing
+select pg_temp.login('11111111-1111-1111-1111-111111111111');
+select lives_ok($$ insert into public.brand_kits (organization_id, name, is_default)
+  values (current_setting('test.alpha')::uuid, 'Alpha brand', true) $$, 'owner creates a brand kit');
+select throws_ok($$ insert into public.brand_kits (organization_id, name, is_default)
+  values (current_setting('test.alpha')::uuid, 'Second default', true) $$, '23505', null, 'only one default kit per org');
+select throws_ok($$ insert into public.brand_kits (organization_id, name, colors)
+  values (current_setting('test.alpha')::uuid, 'Bad colour', '{"background":"red","text":"#ffffff","accent":"#000000"}') $$,
+  '23514', null, 'colours must be #rrggbb');
+select throws_ok($$ insert into public.brand_kits (organization_id, name, logo)
+  values (current_setting('test.alpha')::uuid, 'Script logo', 'data:text/html;base64,PHNjcmlwdD4=') $$,
+  '23514', null, 'logo must be an image data URL');
+reset role;
+select pg_temp.login('22222222-2222-2222-2222-222222222222');
+select is((select count(*)::int from public.brand_kits), 0, 'bob cannot see alpha brand kits');
+select throws_ok($$ insert into public.brand_kits (organization_id, name)
+  values (current_setting('test.alpha')::uuid, 'Intrusion') $$, '42501', null, 'bob cannot add a kit to alpha');
+reset role;
 
 -- claim works for the service path and is exclusive
 select is((select (public.claim_next_job('w1')).status::text), 'running', 'worker claims queued job');

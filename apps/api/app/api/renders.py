@@ -16,6 +16,7 @@ from app.core.access import get_owned
 from app.core.auth import User, current_user
 from app.core.config import get_settings
 from app.core.db import service_client, transcript_words
+from app.core.storage import render_dir
 from app.services.rendering import timeline
 
 router = APIRouter()
@@ -24,6 +25,23 @@ FILES = {"video": "output_path", "thumb": "thumbnail_path"}
 
 class RenderRequest(BaseModel):
     quality: Literal["draft", "looks", "delivery"] = "looks"
+    # None → the organisation's default kit (if any); "none" → render without branding
+    brand_kit_id: str | None = None
+
+
+def _brand_kit(org_id: str, kit_id: str | None) -> dict | None:
+    if kit_id == "none":
+        return None
+    if kit_id:
+        try:
+            uuid.UUID(kit_id)
+        except ValueError as e:
+            raise HTTPException(422, 'brand_kit_id must be a UUID or "none"') from e
+    q = service_client().table("brand_kits").select("*").eq("organization_id", org_id)
+    rows = (q.eq("id", kit_id) if kit_id else q.eq("is_default", True)).limit(1).execute().data
+    if kit_id and not rows:
+        raise HTTPException(404, "Brand kit not found")  # also hides other organisations' kits
+    return rows[0] if rows else None
 
 
 @router.post("/highlights/{highlight_id}/render", status_code=202)
@@ -45,7 +63,14 @@ def render_highlight(highlight_id: str, body: RenderRequest, user: User = Depend
     )[0].get("id")
     words = transcript_words(tr_id) if tr_id else []
     render_id = str(uuid.uuid4())
-    doc = timeline.build(h, rec, words, render_id, body.quality)
+    kit = _brand_kit(h["organization_id"], body.brand_kit_id)
+    logo = None
+    if kit and kit.get("logo"):
+        try:
+            logo = timeline.logo_file(kit["logo"])
+        except ValueError as e:
+            raise HTTPException(422, f"Brand kit logo: {e}") from e
+    doc = timeline.build(h, rec, words, render_id, body.quality, kit=kit, logo_src=logo[0] if logo else None)
     digest = timeline.timeline_hash(doc)
 
     previous = (
@@ -64,9 +89,12 @@ def render_highlight(highlight_id: str, body: RenderRequest, user: User = Depend
         if p["status"] != "ready" or (get_settings().data_dir / p["output_path"]).exists():
             return {"render_id": p["id"], "job_id": p["job_id"], "cached": p["status"] == "ready"}
 
+    if logo:  # the snapshot's logo file lives with the render, so later kit edits never change it
+        (render_dir(h["organization_id"], render_id) / logo[0]).write_bytes(logo[1])
     db.table("render_jobs").insert(
         {
             "id": render_id,
+            "brand_kit_id": kit["id"] if kit else None,
             "organization_id": h["organization_id"],
             "project_id": h["project_id"],
             "recording_id": rec["id"],

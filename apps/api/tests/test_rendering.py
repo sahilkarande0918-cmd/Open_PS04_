@@ -136,3 +136,81 @@ def test_compiled_html_has_trimmed_audio_video_and_escaped_words():
 def test_brand_ink_picks_legible_text():
     assert compose.brand_ink("#f5a524") == "#141005"
     assert compose.brand_ink("#1e3a8a") == "#ffffff"
+
+
+KIT = {
+    "id": "kit-1",
+    "name": "Nimbu Academy",
+    "handle": "@nimbu.academy",
+    "colors": {"background": "#102a43", "text": "#ffffff", "accent": "#ffd166"},
+    "fonts": {"body": "Poppins", "code": "Fira Code"},
+    "logo": None,
+    "watermark": {"enabled": True, "position": "bottom-left"},
+    "caption_preset": "karaoke",
+    "intro": {"enabled": True, "duration": 2, "title": "Today: {title}"},
+    "outro": {"enabled": True, "duration": 3, "cta": "Follow for daily React tips"},
+}
+PNG_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+
+def test_brand_kit_snapshot_offsets_clip_by_intro_and_adds_outro():
+    words = [word("AbortController", 11, 11.8)]
+    doc = timeline.build(
+        highlight(title="Cleanup with AbortController"), REC, words, "r-1", kit=KIT, logo_src="logo-abc.png"
+    )
+    video, caps = doc["tracks"][0]["items"][0], doc["tracks"][1]["items"][0]
+    assert doc["duration"] == 2 + 10 + 3
+    assert video["start"] == 2 and caps["start"] == 2 and caps["words"][0]["start"] == 1.0  # clip-relative
+    assert doc["brand"]["intro"]["title"] == "Today: Cleanup with AbortController"
+    assert doc["brand"]["logoAssetId"] == "logo" and doc["assets"]["logo"]["src"] == "logo-abc.png"
+    assert doc["captionStyle"]["preset"] == "karaoke" and doc["title"] == "Cleanup with AbortController"
+
+
+def test_no_kit_means_no_intro_outro_or_watermark():
+    doc = timeline.build(highlight(), REC, [], "r-1")
+    assert doc["duration"] == 10.0 and doc["tracks"][0]["items"][0]["start"] == 0
+    html = compose.compile_html(doc)
+    assert 'id="intro"' not in html and 'id="outro"' not in html and 'id="mark"' not in html
+
+
+def test_kit_changes_change_the_cache_key():
+    a = timeline.build(highlight(), REC, [], "r-1", kit=KIT)
+    b = timeline.build(
+        highlight(), REC, [], "r-1", kit={**KIT, "colors": {**KIT["colors"], "accent": "#ef476f"}}
+    )
+    assert timeline.timeline_hash(a) != timeline.timeline_hash(b)
+
+
+def test_logo_file_validates_and_names_by_content():
+    name, data = timeline.logo_file(PNG_1PX)
+    assert name.startswith("logo-") and name.endswith(".png") and data[:4] == b"\x89PNG"
+    for bad in ["data:text/html;base64,PHNjcmlwdD4=", "data:image/png;base64,***", "https://x/logo.png"]:
+        with pytest.raises(ValueError):
+            timeline.logo_file(bad)
+
+
+def test_branded_html_has_cards_watermark_fonts_and_shifted_times():
+    words = [word("AbortController", 11, 11.8)]
+    doc = timeline.build(highlight(title="Cleanup"), REC, words, "r-1", kit=KIT, logo_src="logo-abc.png")
+    html = compose.compile_html(doc)
+    assert 'data-start="2.0" data-duration="10.0"' in html  # video after the 2 s intro
+    assert (
+        'id="intro" class="card clip" data-start="0" data-duration="2.0"' in html and "Today: Cleanup" in html
+    )
+    assert (
+        'id="outro" class="card clip" data-start="12.0" data-duration="3.0"' in html
+        and "@nimbu.academy" in html
+    )
+    assert 'id="mark" class="clip" data-start="2.0"' in html and "bottom: 150px; left: 44px;" in html
+    assert 'font-family: "Poppins"' in html and 'font-family: "Fira Code"' in html and '"Archivo"' not in html
+    assert "[0, 3.0, 4.3, true]" in html  # clip 1.0 s → composition 3.0 s; held to page end
+    assert '"off": null' in html  # karaoke words keep their spoken colour
+
+
+def test_write_project_copies_only_the_fonts_used(tmp_path):
+    doc = timeline.build(highlight(), REC, [], "r-1", kit=KIT)
+    compose.write_project(doc, tmp_path)
+    assert sorted(p.name for p in (tmp_path / "fonts").iterdir()) == [
+        "fira-code-600.woff2",
+        "poppins-700.woff2",
+    ]
