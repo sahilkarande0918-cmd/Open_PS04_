@@ -203,3 +203,11 @@ The following generated inventory lists every changed/new tracked project file s
 Final rerun: frontend ESLint and TypeScript passed; timeline 9/9 passed; frontend API-error tests 4/4 passed (Node emits a harmless module-type warning). Backend 76 passed / 6 skipped / 1 strict known xfail; Ruff passed. Next production build already passed with final frontend files. No new feature or GPU benchmark started during handoff. Working changes are checkpoint fixes, regression tests and documentation only.
 
 Local-only state deliberately retained: ignored backend .env and encryption key, frontend .env.local, user CLI authentication, node_modules/.next, Python/model caches, local media/data, ignored service logs and empty failed-probe directory data/modeb-smoke. None should be added to Git. Existing service PIDs remain running as documented; no test video published.
+
+## Verified repository handback
+
+Implementation checkpoint `f144e7b337ee0d712d079529efdaf0c2001c51c7` was committed, main was fast-forwarded from `5acd53aa96c6fe6be77f972c11cd14298bf6b5fe`, and `git push origin main` succeeded. `git ls-remote origin refs/heads/main` returned the identical f144e7b SHA. `git status --porcelain=v1` was empty. PR #1 is MERGED. No conflict, reset, stash, history rewrite or force push occurred. The feature remote still points to the earlier 7419b77; all final work is preserved on main.
+
+66 tracked files changed from takeover base; complete file inventory above. Final staged secret-value scan passed, with zero environment/media/log/key files staged. Original PS/master prompts untouched. Subsequent documentation-only commit records these observations; obtain its exact current local/remote SHA with `git rev-parse HEAD` and `git ls-remote origin refs/heads/main` instead of assuming this embedded checkpoint SHA is HEAD.
+
+Main push triggered production deployment `dpl_J6YEgyj4ro1emy4DGyLYEgDB4Ntw` for f144e7b; first check BUILDING. Prior manually deployed 7419b77 remained READY. A separate earlier branch-preview deployment was ERROR; the successful production deployment/build is not that preview. Check current production state on resume. No remaining source edits or untracked project files were left at that clean-tree check; ignored runtime state remains as listed above.
