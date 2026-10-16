@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Film } from "lucide-react";
+import { Clapperboard, Download, Film } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch, useBackend } from "@/lib/backend";
 import { createClient } from "@/lib/supabase/client";
@@ -175,15 +176,18 @@ export function Renders({ highlightId, projectId, selected, canEdit }: { highlig
             {urls.data && (
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => download(fetch(urls.data.download, { headers: { "X-Tunnel-Skip-AntiPhishing-Page": "true" } }), `reel-${latest.id.slice(0, 8)}.mp4`)}
-                  className="inline-flex items-center gap-1.5 rounded-[4px] bg-surface-3 px-3 py-1.5 hover:bg-surface-2">
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 hover:bg-surface-3">
                   <Download size={14} aria-hidden /> Download MP4
                 </button>
                 {(["srt", "vtt"] as const).map((f) => (
                   <button key={f} type="button" onClick={() => download(apiFetch(base!, `/renders/${latest.id}/captions?format=${f}`), `reel-${latest.id.slice(0, 8)}.${f}`)}
-                    className="rounded-[4px] bg-surface-3 px-3 py-1.5 uppercase hover:bg-surface-2">
+                    className="rounded-lg bg-surface-2 px-3 py-1.5 uppercase hover:bg-surface-3">
                     {f}
                   </button>
                 ))}
+                <Link href={`/editor/${latest.id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-ink hover:brightness-110">
+                  <Clapperboard size={14} aria-hidden /> Open in editor
+                </Link>
               </div>
             )}
             <TimingNote timing={latest.job?.result?.timing} />

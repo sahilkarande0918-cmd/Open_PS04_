@@ -3,6 +3,7 @@
 from app.core.db import service_client
 from app.core.storage import render_dir
 from app.services.generation import TopicRequest, build_timeline, cached_storyboard, synthesize_narration
+from app.services.generation.models import Storyboard
 from app.services.rendering import timeline
 from app.workers.jobs import JobContext
 from app.workers.render import run_render
@@ -35,7 +36,8 @@ def run_generate(ctx: JobContext) -> dict:
     )
     db.table("topic_generations").update({"status": "generating", "error": None}).eq("id", gid).execute()
     ctx.stage("storyboard", 0.02, "Writing and syntax-checking the educational storyboard locally")
-    board = cached_storyboard(request, project)
+    edited = row["settings"].get("storyboard")
+    board = Storyboard.model_validate(edited) if edited else cached_storyboard(request, project)
     db.table("topic_generations").update({"storyboard": board.model_dump()}).eq("id", gid).execute()
     ctx.stage("narration", 0.12, "Generating local narration and measuring caption timing")
     narration = synthesize_narration(
@@ -76,4 +78,5 @@ def run_generate(ctx: JobContext) -> dict:
     ).execute()
     result = run_render(RenderProgress(ctx, rid))
     db.table("topic_generations").update({"status": "ready", "error": None}).eq("id", gid).execute()
+    db.table("projects").update({"status": "video ready"}).eq("id", row["project_id"]).execute()
     return {"generation_id": gid, **result}

@@ -4,37 +4,21 @@ import { useActionState } from "react";
 import { FormMessage, Submit } from "@/components/ui/form";
 import { createProject } from "./actions";
 
-export function NewProjectForm({ mode = "recording" }: { mode?: "recording" | "topic" }) {
+export function NewProjectForm({ mode = "recording", fixedMode }: { mode?: "recording" | "topic"; fixedMode?: boolean }) {
   const [state, action] = useActionState(createProject, undefined);
   return (
-    <form id="new-project" action={action} className="studio-panel grid scroll-mt-6 gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px_140px] lg:items-end">
-      <label className="flex-1">
-        <span className="text-[13px] text-muted">Project name</span>
-        <input
-          name="name"
-          required
-          maxLength={120}
-          placeholder="React hooks — class 7"
-          className="studio-input mt-2"
-        />
+    <form id="new-project" action={action} className="studio-panel grid scroll-mt-20 gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-end">
+      <label className="studio-label">New project name
+        <input name="name" required maxLength={120} placeholder={mode === "topic" ? "JSON vs XML explainer" : "React hooks — class 7"} className="studio-input" />
       </label>
-      <label>
-        <span className="text-[13px] text-muted">Mode</span>
-        <select
-          name="mode"
-          defaultValue={mode}
-          className="studio-input mt-2"
-        >
+      {fixedMode ? <input type="hidden" name="mode" value={mode} /> : <label className="studio-label">Type
+        <select name="mode" defaultValue={mode} className="studio-input">
           <option value="recording">Recording → Reels</option>
           <option value="topic">Topic → Video</option>
         </select>
-      </label>
-      <div>
-        <Submit>Create project</Submit>
-      </div>
-      <div className="lg:col-span-3">
-        <FormMessage state={state} />
-      </div>
+      </label>}
+      <div><Submit>Create project</Submit></div>
+      <div className="lg:col-span-3 empty:hidden"><FormMessage state={state} /></div>
     </form>
   );
 }

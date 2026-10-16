@@ -6,7 +6,7 @@ export default async function BrandPage() {
   return (
     <div className="max-w-[1100px] space-y-6">
       <div>
-        <h1 className="text-[28px] tracking-[-0.02em]">Brand kit</h1>
+        <p className="studio-eyebrow mb-2">Brand</p><h1 className="studio-heading">Brand Kits</h1>
         <p className="mt-1 max-w-[70ch] text-[15px] text-muted">
           Colours, fonts, logo, handle, caption style and intro/outro cards for {org.name}. Every render copies the kit
           it used, so editing a kit never changes reels you already exported.

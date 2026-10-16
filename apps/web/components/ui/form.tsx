@@ -22,7 +22,7 @@ export function Submit({ children }: { children: ReactNode }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-[4px] bg-accent px-4 py-2.5 text-[15px] font-semibold text-accent-ink transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
+      className="w-full rounded-lg bg-accent px-4 py-2.5 text-[15px] font-semibold text-accent-ink transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
     >
       {pending ? "Working…" : children}
     </button>

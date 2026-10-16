@@ -67,6 +67,30 @@ def _render(ctx: JobContext, project: Path, quality: str) -> None:
             raise RuntimeError(f"hyperframes render exited {proc.returncode}: {tail}")
 
 
+def fade_expression(doc: dict) -> str | None:
+    """ffmpeg volume expression for editor audio fades, at composition time.
+    ponytail: fades scale the whole mix at those moments (one audible source at a time in practice);
+    per-source fades would need Hyperframes to animate element volume."""
+    parts = []
+    for item in (i for t in doc["tracks"] for i in t["items"] if i["type"] in ("video", "audio")):
+        a, b = item["start"], item["start"] + item["duration"]
+        if (f := item.get("fadeIn", 0)) > 0:
+            parts.append(f"if(between(t,{a:.3f},{a + f:.3f}),(t-{a:.3f})/{f:.3f},1)")
+        if (f := item.get("fadeOut", 0)) > 0:
+            parts.append(f"if(between(t,{b - f:.3f},{b:.3f}),({b:.3f}-t)/{f:.3f},1)")
+    return "*".join(parts) or None
+
+
+def apply_fades(out: Path, doc: dict) -> None:
+    expr = fade_expression(doc)
+    if not expr:
+        return
+    tmp = out.with_name("faded.mp4")
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-c:v", "copy", "-af",
+                    f"volume='{expr}':eval=frame", "-c:a", "aac", "-b:a", "192k", str(tmp)], check=True, timeout=600)
+    tmp.replace(out)
+
+
 def verify(path: Path, expected_s: float, width: int, height: int) -> dict:
     """The output must be what the timeline asked for: size, duration (±0.1 s), H.264 + audio."""
     info = media.probe(path)
@@ -138,6 +162,7 @@ def run_render(ctx: JobContext) -> dict:
 
         ctx.stage("verify", 0.95, "Verifying the MP4")
         out = project / "out.mp4"
+        apply_fades(out, doc)
         meta = verify(out, doc["duration"], doc["width"], doc["height"])
         thumb = project / "thumb.jpg"
         subprocess.run(

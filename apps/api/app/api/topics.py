@@ -10,6 +10,7 @@ from app.core.access import get_owned
 from app.core.auth import User, current_user
 from app.core.db import service_client
 from app.services.generation import TopicRequest
+from app.services.generation.models import Storyboard
 
 router = APIRouter()
 
@@ -17,6 +18,8 @@ router = APIRouter()
 class GenerateRequest(TopicRequest):
     quality: Literal["draft", "looks", "delivery"] = "looks"
     brand_kit_id: str | None = None
+    # An edited storyboard skips the LLM; it is syntax-checked here and narrated/rendered as written.
+    storyboard: Storyboard | None = None
 
 
 @router.post("/projects/{project_id}/generate", status_code=202)

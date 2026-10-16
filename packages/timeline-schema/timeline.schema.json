@@ -165,6 +165,26 @@
                       "minimum": 0,
                       "maximum": 3.98
                     },
+                    "fadeIn": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "fadeOut": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "transition": {
+                      "default": "none",
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "fade",
+                        "slide",
+                        "zoom"
+                      ]
+                    },
                     "cropKeyframes": {
                       "minItems": 1,
                       "type": "array",
@@ -333,6 +353,16 @@
                       "type": "number",
                       "minimum": 0,
                       "maximum": 3.98
+                    },
+                    "fadeIn": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "fadeOut": {
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
                     }
                   },
                   "required": [
@@ -418,6 +448,16 @@
                           "typingDuration"
                         ]
                       }
+                    },
+                    "transition": {
+                      "default": "none",
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "fade",
+                        "slide",
+                        "zoom"
+                      ]
                     }
                   },
                   "required": [
@@ -478,6 +518,20 @@
                         "left",
                         "center",
                         "right"
+                      ]
+                    },
+                    "box": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "transition": {
+                      "default": "none",
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "fade",
+                        "slide",
+                        "zoom"
                       ]
                     }
                   },

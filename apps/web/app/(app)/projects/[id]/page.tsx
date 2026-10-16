@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft, Code2, Mic } from "lucide-react";
+import { statusTone } from "@/components/app/project-grid";
 import { RecordingStudio } from "@/components/studio/recording-studio";
 import { TopicStudio } from "@/components/studio/topic-studio";
 import { requireOrg } from "@/lib/supabase/server";
@@ -9,20 +11,18 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const { supabase, org } = await requireOrg();
   const { data: project } = await supabase.from("projects").select("id, name, mode, status, organization_id").eq("id", id).maybeSingle();
   if (!project || project.organization_id !== org.id) notFound();
+  const topic = project.mode === "topic";
   return (
-    <div className="max-w-[1280px] space-y-6">
+    <div className="space-y-6">
       <div>
-        <Link href="/projects" className="text-[13px] text-muted hover:text-ink">
-          Projects
-        </Link>
-        <h1 className="studio-heading mt-2">{project.name}</h1>
-        <p className="text-[14px] text-muted">{project.mode === "recording" ? "Recording → Reels" : "Topic → Video"} · {project.status}</p>
+        <Link href={topic ? "/topics" : "/recordings"} className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted hover:text-ink"><ChevronLeft size={15} aria-hidden />{topic ? "Topic Studio" : "Recordings"}</Link>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--rail)] text-[var(--rail-ink)]">{topic ? <Code2 size={19} aria-hidden /> : <Mic size={19} aria-hidden />}</span>
+          <h1 className="studio-heading">{project.name}</h1>
+          <span className={`studio-pill ${statusTone(project.status)}`}>{project.status.replaceAll("_", " ")}</span>
+        </div>
       </div>
-      {project.mode === "recording" ? (
-        <RecordingStudio projectId={project.id} canEdit={org.role !== "viewer"} />
-      ) : (
-        <TopicStudio projectId={project.id} canEdit={org.role !== "viewer"} />
-      )}
+      {topic ? <TopicStudio projectId={project.id} canEdit={org.role !== "viewer"} /> : <RecordingStudio projectId={project.id} canEdit={org.role !== "viewer"} />}
     </div>
   );
 }

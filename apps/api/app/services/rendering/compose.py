@@ -197,7 +197,12 @@ def compile_html(doc: dict) -> str:
     chip = rgba(bg, 0.85)
     states = word_states(preset, text, accent, ink, chip, shadow)
 
-    media_html, cameras, overlays, code_sequences = [], [], [], []
+    media_html, cameras, overlays, code_sequences, fx = [], [], [], [], []
+
+    def transition(item: dict, selector: str, start: float, end: float) -> None:
+        if item.get("transition", "none") != "none":
+            fx.append({"sel": selector, "s": round(start, 3), "e": round(end, 3), "kind": item["transition"]})
+
     for idx, item in enumerate(items):
         start, duration = item["start"], item["duration"]
         if item["type"] in ("video", "audio"):
@@ -211,18 +216,22 @@ def compile_html(doc: dict) -> str:
                 for c in cams:
                     c["t"] = round(c["t"] + start, 3)
                 cameras.append({"win": f"#win-{idx}", "cam": f"#cam-{idx}", "keys": cams})
+                transition(item, f"#win-{idx}", start, start + duration)
                 media = (f'<div id="win-{idx}" class="win clip" data-start="{start}" data-duration="{duration}">'
                          f'<div id="cam-{idx}" class="cam" style="width:{asset.get("width", w)}px;'
                          f'height:{asset.get("height", h)}px">{media}</div></div>')
             media_html.append(media)
         elif item["type"] == "text":
-            overlays.append(f'<div class="text-overlay clip" data-start="{start}" data-duration="{duration}" '
-                            f'style="left:{item.get("x", 80)}px;top:{item.get("y", 180)}px;'
+            transition(item, f"#text-{idx}", start, start + duration)
+            box = f"background:{rgba(bg, 0.82)};padding:18px 28px;border-radius:24px;" if item.get("box") else ""
+            overlays.append(f'<div id="text-{idx}" class="text-overlay clip" data-start="{start}" data-duration="{duration}" '
+                            f'style="{box}left:{item.get("x", 80)}px;top:{item.get("y", 180)}px;'
                             f'font-size:{item.get("fontSize", 64)}px;color:{item.get("color", text)};'
                             f'text-align:{item.get("align", "left")}">{html.escape(item["text"])}</div>')
         elif item["type"] == "code":
             revisions = [{"at": 0, "code": item["code"], "typingDuration": item.get("typingDuration", 2)},
                          *item.get("changes", [])]
+            transition(item, f"#code-{idx}-0", start, start + (revisions[1]["at"] if len(revisions) > 1 else duration))
             for ri, revision in enumerate(revisions):
                 at = revision["at"]
                 end = revisions[ri + 1]["at"] if ri + 1 < len(revisions) else duration
@@ -313,7 +322,7 @@ def compile_html(doc: dict) -> str:
       .code-panel header {{ display: flex; justify-content: space-between; align-items: center; gap: 24px;
                            font: {bw} 54px/1.2 "{body_font}", sans-serif; margin-bottom: 48px; }}
       .code-panel small {{ font-size: 32px; color: {accent}; text-transform: uppercase; letter-spacing: 0.08em; }}
-      .code-panel pre {{ font: {cw} 46px/1.5 "{code_font}", monospace; white-space: pre-wrap;
+      .code-panel pre {{ font: {cw} 46px/1.5 "{code_font}", monospace; white-space: pre-wrap; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
                          overflow-wrap: anywhere; margin: 0; tab-size: 2; }}
       .tok-string {{ color: #a7e3bc; }} .tok-number {{ color: #f0c488; }}
       .tok-keyword, .tok-tag {{ color: #e9b5a5; }} .tok-comment {{ color: #9aa6a1; }}
@@ -352,6 +361,7 @@ def compile_html(doc: dict) -> str:
       const CODE = {json.dumps(code_sequences)};
       const WORDS = {json.dumps(word_times)};
       const S = {json.dumps(states)};
+      const FX = {json.dumps(fx)};
       const tl = gsap.timeline({{ paused: true }});
       CAMERAS.forEach(track => track.keys.forEach((k, i) => {{
         const win = {{ y: k.win[0], height: k.win[1] }}, cam = {{ x: k.cam[0], y: k.cam[1], scale: k.cam[2] }};
@@ -370,6 +380,12 @@ def compile_html(doc: dict) -> str:
         tl.set(el, code ? S.code_on : S.on, on);
         const after = code ? S.code_off : S.off;
         if (after) tl.set(el, after, off);
+      }});
+      const FROM = {{ fade: {{ opacity: 0 }}, slide: {{ opacity: 0, x: 160 }}, zoom: {{ opacity: 0, scale: 0.86 }} }};
+      FX.forEach(({{ sel, s, e, kind }}) => {{
+        const d = Math.min(0.4, (e - s) / 2);
+        tl.fromTo(sel, FROM[kind], {{ opacity: 1, x: 0, scale: 1, duration: d, ease: "power2.out" }}, s);
+        tl.to(sel, {{ ...FROM[kind], duration: d, ease: "power2.in" }}, e - d);
       }});
       if (document.querySelector("#intro")) {{
         tl.fromTo("#intro .logo", {{ opacity: 0, scale: 0.9 }}, {{ opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }}, 0.05);

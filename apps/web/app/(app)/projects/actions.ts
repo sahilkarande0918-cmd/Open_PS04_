@@ -7,7 +7,7 @@ import { requireOrg } from "@/lib/supabase/server";
 export type ProjectFormState = { error?: string; notice?: string } | undefined;
 
 export async function createProject(_: ProjectFormState, form: FormData): Promise<ProjectFormState> {
-  const name = String(form.get("name") ?? "").trim();
+  const name = String(form.get("name") ?? form.get("topic") ?? "").trim().slice(0, 120);
   const mode = String(form.get("mode") ?? "");
   if (!name || name.length > 120) return { error: "Give the project a name (up to 120 characters)." };
   if (mode !== "recording" && mode !== "topic") return { error: "Choose a mode." };
@@ -17,5 +17,6 @@ export async function createProject(_: ProjectFormState, form: FormData): Promis
   if (error) return { error: error.code === "42501" ? "Your role cannot create projects here." : error.message };
   revalidatePath("/projects");
   revalidatePath("/dashboard");
-  redirect(`/projects/${data.id}`);
+  const topic = String(form.get("topic") ?? "").trim().slice(0, 500);
+  redirect(topic ? `/projects/${data.id}?topic=${encodeURIComponent(topic)}` : `/projects/${data.id}`);
 }

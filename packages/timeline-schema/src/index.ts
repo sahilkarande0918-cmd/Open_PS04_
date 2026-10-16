@@ -32,6 +32,9 @@ export const Asset = z.object({
   duration: seconds.optional(),
 });
 
+/** Editor transition on a visual item: animated in at its start and out at its end (0.4 s). */
+export const Transition = z.enum(["none", "fade", "slide", "zoom"]);
+
 export const VideoItem = z.object({
   id: z.string().min(1),
   type: z.literal("video"),
@@ -41,6 +44,10 @@ export const VideoItem = z.object({
   sourceStart: seconds,
   sourceEnd: z.number().positive(),
   volume: z.number().min(0).max(3.98).default(1),
+  /** Audio fades in seconds at the item's start/end (applied to the mix at those times). */
+  fadeIn: seconds.default(0),
+  fadeOut: seconds.default(0),
+  transition: Transition.default("none"),
   cropKeyframes: z.array(CropKeyframe).min(1),
 });
 
@@ -59,7 +66,7 @@ export const CaptionItem = z.object({
   words: z.array(CaptionWord),
 });
 
-export const AudioItem = VideoItem.omit({ cropKeyframes: true }).extend({ type: z.literal("audio") });
+export const AudioItem = VideoItem.omit({ cropKeyframes: true, transition: true }).extend({ type: z.literal("audio") });
 
 /** Source text is displayed only. It is never inserted as HTML or executed. */
 export const CodeItem = z.object({
@@ -68,6 +75,7 @@ export const CodeItem = z.object({
   title: z.string().max(120).default(""), code: z.string().max(12000),
   typingDuration: seconds.default(2),
   changes: z.array(z.object({ at: seconds, code: z.string().max(12000), typingDuration: seconds })).max(30).default([]),
+  transition: Transition.default("none"),
 });
 
 export const TextItem = z.object({
@@ -76,6 +84,9 @@ export const TextItem = z.object({
   fontSize: z.number().int().min(12).max(200).default(64),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   align: z.enum(["left", "center", "right"]).default("left"),
+  /** Solid brand-coloured box behind the text for legibility over video. */
+  box: z.boolean().default(false),
+  transition: Transition.default("none"),
 });
 
 export const Item = z.discriminatedUnion("type", [VideoItem, CaptionItem, AudioItem, CodeItem, TextItem]);
@@ -153,6 +164,8 @@ export const Composition = z
           if (!c.assets[item.assetId]) ctx.addIssue({ code: "custom", path, message: `unknown asset ${item.assetId}` });
           else if (c.assets[item.assetId].kind !== item.type)
             ctx.addIssue({ code: "custom", path, message: "media asset kind must match item type" });
+          if (item.fadeIn + item.fadeOut > item.duration + 1e-3)
+            ctx.addIssue({ code: "custom", path, message: "fades are longer than the item" });
           if (Math.abs(item.sourceEnd - item.sourceStart - item.duration) > 1e-3)
             ctx.addIssue({ code: "custom", path, message: "duration must equal sourceEnd - sourceStart (no speed change yet)" });
           if (c.assets[item.assetId]?.duration !== undefined && item.sourceEnd > c.assets[item.assetId].duration! + 1e-3)

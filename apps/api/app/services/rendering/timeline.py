@@ -66,6 +66,8 @@ def validate(doc: dict) -> None:
                 asset = doc["assets"][item["assetId"]]
                 if asset["kind"] != item["type"]:
                     raise jsonschema.ValidationError("media asset kind must match item type")
+                if item.get("fadeIn", 0) + item.get("fadeOut", 0) > item["duration"] + 1e-3:
+                    raise jsonschema.ValidationError("fades are longer than the item")
                 if abs(item["sourceEnd"] - item["sourceStart"] - item["duration"]) > 1e-3:
                     raise jsonschema.ValidationError("duration must equal sourceEnd - sourceStart")
                 if "duration" in asset and item["sourceEnd"] > asset["duration"] + 1e-3:

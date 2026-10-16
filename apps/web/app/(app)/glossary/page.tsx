@@ -6,7 +6,7 @@ export default async function GlossaryPage() {
   return (
     <div className="max-w-[960px] space-y-6">
       <div>
-        <h1 className="text-[28px] tracking-[-0.02em]">Technical glossary</h1>
+        <p className="studio-eyebrow mb-2">Brand</p><h1 className="studio-heading">Technical glossary</h1>
         <p className="mt-1 max-w-[70ch] text-[15px] text-muted">
           Terms your instructors use. Transcription is biased towards these spellings, and spoken forms are corrected to
           them. The raw transcript is always kept alongside.
