@@ -41,7 +41,7 @@ Objective: correct repo, team invitations, preserved prompt, docs, monorepo skel
 |------|--------|----------|
 | Next.js 16 + TS + Tailwind v4 | ✅ | `next build` passes |
 | Design tokens + landing page | ✅ | taste-skill inspector: 0 FAIL (1 WARN: no footage, defended) |
-| Supabase SSR auth: signup/login/logout/reset/confirm | ✅ local | browser test on local stack |
+| Supabase SSR auth: signup/login/logout/reset/confirm | ✅ local · ✅ production signup + email confirm + onboarding (owner, 2026-10-17) | browser test on local stack; production data check |
 | Protected routes (proxy.ts) | ✅ | `curl /dashboard` → 307 `/login?next=/dashboard` |
 | Workspace model + onboarding | ✅ local | created "Nimbu Academy" via UI, role owner |
 | Migrations + RLS | ✅ local | `supabase test db` 16/16, `supabase db lint` clean |
