@@ -118,3 +118,8 @@ Tasks (MASTER_PROMPT §19):
 §10 brand kit: name, logo, colours (background/text/accent), fonts, caption style, intro/outro, handle, watermark, reusable kits (several per org, one default), preview before rendering, snapshots ✅. A per-kit "default video settings" option is not built (quality is chosen per render).
 
 Acceptance ("upload a programming class → professional 9:16 reel with highlight, framing, accurate captions, branding, audio sync"): ✅ on the **synthetic** programming lecture (frames, ffprobe and timing checks in TEST_STATUS). A real programming class remains unavailable (no free, licensed recording).
+
+
+## 2026-10-17 Codex hackathon sprint priority overlay
+
+See [CODEX_HANDOFF.md](CODEX_HANDOFF.md). **Original phase numbering and the official PS remain unchanged.** Prioritize Phase 05 Mode B working MP4 → UI redesign across main screens → Phase 06 real editable/exportable timeline → Phase 07 official Instagram/YouTube publishing + scheduler → Phase 08 genuine analytics/feedback → Phase 09 integrated judge demo. Run production smoke checks between slices. Treat subscription billing/deep administration and nonessential polish as stretch after PS workflows. Phase 04 already has successful local synthetic MP4 exports; production render and real programming lecture accuracy remain unverified. Keep essential session auth, tenant isolation/RLS, API authorization, upload checks, OAuth/token safety, and publish idempotency. Verify real results before changing statuses; some older Phase 01 lines above are stale, so check DEPLOYMENT and TEST_STATUS.
