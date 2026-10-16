@@ -1,0 +1,160 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Film } from "lucide-react";
+import { useEffect, useState } from "react";
+import { apiFetch, useBackend } from "@/lib/backend";
+import { createClient } from "@/lib/supabase/client";
+
+type Render = {
+  id: string;
+  status: "queued" | "rendering" | "ready" | "failed" | "cancelled";
+  quality: string;
+  job_id: string | null;
+  duration_s: number | null;
+  size_bytes: number | null;
+  render_s: number | null;
+  error: string | null;
+  created_at: string;
+  job: { progress: number; current_stage: string | null; status: string } | null;
+};
+
+const STAGES: Record<string, string> = {
+  queued: "Waiting for the processing machine",
+  compose: "Compiling the timeline",
+  lint: "Checking the composition",
+  render: "Rendering frames",
+  verify: "Verifying the MP4",
+};
+const QUALITY = { draft: "Draft (fast)", looks: "Standard", delivery: "Delivery (best)" } as const;
+
+/** Render a selected highlight to MP4; progress is live via Realtime, results play inline. */
+export function Renders({ highlightId, projectId, selected, canEdit }: { highlightId: string; projectId: string; selected: boolean; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const backend = useBackend();
+  const base = backend.data?.state === "online" ? backend.data.url : null;
+  const [quality, setQuality] = useState<keyof typeof QUALITY>("looks");
+  const [error, setError] = useState<string | null>(null);
+  const key = ["renders", highlightId];
+
+  const renders = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const { data, error } = await createClient()
+        .from("render_jobs")
+        .select("id, status, quality, job_id, duration_s, size_bytes, render_s, error, created_at, job:jobs(progress, current_stage, status)")
+        .eq("highlight_id", highlightId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return data as unknown as Render[];
+    },
+    refetchInterval: (q) => (q.state.data?.some((r) => r.status === "queued" || r.status === "rendering") ? 3000 : false),
+  });
+  useEffect(() => {
+    const sb = createClient();
+    const ch = sb.channel(`renders:${highlightId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "render_jobs", filter: `highlight_id=eq.${highlightId}` }, () => qc.invalidateQueries({ queryKey: key }))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "jobs", filter: `project_id=eq.${projectId}` }, () => qc.invalidateQueries({ queryKey: key }))
+      .subscribe();
+    return () => { sb.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, projectId]);
+
+  const latest = renders.data?.[0];
+  const urls = useQuery({
+    queryKey: ["render-urls", latest?.id, base],
+    enabled: !!base && latest?.status === "ready",
+    staleTime: 60 * 60 * 1000,
+    queryFn: async () => {
+      const r = await apiFetch(base!, `/renders/${latest!.id}/urls`);
+      if (!r.ok) throw new Error("link refused");
+      const u = await r.json();
+      const abs = (p: string) => `${base!.replace(/\/$/, "")}${p}`;
+      return { video: abs(u.video), thumb: abs(u.thumb), download: abs(u.download) };
+    },
+  });
+
+  async function render() {
+    setError(null);
+    if (!base) return setError("The processing backend is offline.");
+    const r = await apiFetch(base, `/highlights/${highlightId}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quality }),
+    });
+    if (!r.ok) setError((await r.json()).detail ?? `Render refused (${r.status})`);
+    qc.invalidateQueries({ queryKey: key });
+  }
+
+  // fetch + blob instead of a link: a navigation through a dev tunnel gets its interstitial page
+  async function download(url: string, name: string) {
+    const r = await fetch(url, { headers: { "X-Tunnel-Skip-AntiPhishing-Page": "true" } }).catch(() => null);
+    if (!r?.ok) return setError("Download failed. Is the processing backend online?");
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await r.blob()), download: name });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const busy = latest?.status === "queued" || latest?.status === "rendering";
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      <div className="flex flex-wrap items-center gap-3 text-[13px]">
+        <h3 className="mr-auto text-[15px]">Export</h3>
+        {canEdit && (
+          <>
+            <label className="text-muted">
+              Quality{" "}
+              <select value={quality} onChange={(e) => setQuality(e.target.value as keyof typeof QUALITY)}
+                className="ml-1 rounded-[4px] bg-surface-2 px-2 py-1.5 text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                {Object.entries(QUALITY).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={render} disabled={!selected || busy || !base}
+              className="flex items-center gap-1.5 rounded-[4px] bg-accent px-3 py-1.5 font-semibold text-accent-ink hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+              <Film size={14} aria-hidden /> Render MP4
+            </button>
+          </>
+        )}
+      </div>
+      {!selected && <p className="text-[13px] text-muted">Select this highlight to render it.</p>}
+      {selected && !base && <p className="text-[13px] text-muted">Rendering needs the processing backend online.</p>}
+      {error && <p className="text-[13px] text-danger">{error}</p>}
+      {latest && busy && (
+        <div className="space-y-1.5" aria-live="polite">
+          <div className="flex justify-between text-[13px]">
+            <span>{STAGES[latest.job?.current_stage ?? "queued"] ?? latest.job?.current_stage}</span>
+            <span className="tabular-nums text-muted">{Math.round((latest.job?.progress ?? 0) * 100)}%</span>
+          </div>
+          <progress className="h-2 w-full accent-[var(--accent)]" value={latest.job?.progress ?? 0} max={1} />
+        </div>
+      )}
+      {latest?.status === "failed" && <p className="text-[13px] text-danger">Render failed: {latest.error}</p>}
+      {latest?.status === "cancelled" && <p className="text-[13px] text-muted">Render cancelled.</p>}
+      {latest?.status === "ready" && (
+        <div className="flex flex-wrap items-start gap-4">
+          {urls.data ? (
+            <video src={urls.data.video} poster={urls.data.thumb} controls playsInline preload="metadata"
+              className="w-[216px] rounded-[6px] bg-black" style={{ aspectRatio: "9 / 16" }} />
+          ) : (
+            <div className="grid w-[216px] place-items-center rounded-[6px] bg-surface-2 text-[13px] text-muted" style={{ aspectRatio: "9 / 16" }}>
+              {base ? "Loading…" : "Backend offline"}
+            </div>
+          )}
+          <div className="space-y-2 text-[13px]">
+            <p className="tabular-nums text-muted">
+              1080×1920 · {latest.duration_s?.toFixed(1)} s · {((latest.size_bytes ?? 0) / 1024 ** 2).toFixed(1)} MB · {QUALITY[latest.quality as keyof typeof QUALITY] ?? latest.quality}
+              {latest.render_s ? ` · rendered in ${Math.round(latest.render_s)} s` : ""}
+            </p>
+            {urls.data && (
+              <button type="button" onClick={() => download(urls.data.download, `reel-${latest.id.slice(0, 8)}.mp4`)}
+                className="inline-flex items-center gap-1.5 rounded-[4px] bg-surface-3 px-3 py-1.5 hover:bg-surface-2">
+                <Download size={14} aria-hidden /> Download MP4
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -46,6 +46,7 @@ export function useProjectJobs(projectId: string) {
         .from("jobs")
         .select("id, job_type, status, progress, current_stage, error, attempts, result, created_at, updated_at")
         .eq("project_id", projectId)
+        .neq("job_type", "render") // render progress lives with its highlight (components/studio/renders.tsx)
         .order("created_at", { ascending: false })
         .limit(5);
       if (error) throw error;

@@ -14,10 +14,11 @@ from datetime import UTC, datetime, timedelta
 from app.core.db import service_client
 from app.workers.jobs import Cancelled, JobContext, Permanent
 from app.workers.analyze import run_analyze
+from app.workers.render import run_render
 from app.workers.transcribe import run_transcribe
 
 log = logging.getLogger("worker")
-HANDLERS = {"transcribe": run_transcribe, "analyze": run_analyze}
+HANDLERS = {"transcribe": run_transcribe, "analyze": run_analyze, "render": run_render}
 WORKER_ID = f"{socket.gethostname()}-{int(time.time())}"
 POLL_S = 2
 HEARTBEAT_S = 30

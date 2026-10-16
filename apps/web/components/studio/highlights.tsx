@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch, useBackend } from "@/lib/backend";
 import { useMediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
+import { Renders } from "./renders";
 
 export type Keyframe = {
   t: number;
@@ -35,6 +36,8 @@ type Highlight = {
   boundaries_edited: boolean;
 };
 
+/** Panel centre as a fraction of frame height — keeps code above the caption zone (matches the renderer). */
+const PANEL_CENTER = 0.4;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 
 /** Crop box at clip-relative time t: eased between keyframes, stepped at cuts. */
@@ -62,11 +65,16 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
 
 
 
+  // same geometry as the renderer (apps/api/app/services/rendering/compose.py `camera`)
   let style: React.CSSProperties = {};
+  let win = { top: 0, height: H };
   if (k) {
     const s = k.layout === "panel" ? W / k.crop_width : H / k.crop_height;
-    const panelTop = k.layout === "panel" ? (H - k.crop_height * s) / 2 : 0;
-    style = { position: "absolute", width: srcW * s, height: srcH * s, left: -k.crop_x * s, top: panelTop - k.crop_y * s, maxWidth: "none" };
+    if (k.layout === "panel") {
+      const ph = k.crop_height * s;
+      win = { top: Math.min(Math.max(PANEL_CENTER * H - ph / 2, 0), H - ph), height: ph };
+    }
+    style = { position: "absolute", width: srcW * s, height: srcH * s, left: -k.crop_x * s, top: -k.crop_y * s, maxWidth: "none" };
   }
   const box = k ? { left: (k.crop_x / srcW) * 100, width: (k.crop_width / srcW) * 100, top: (k.crop_y / srcH) * 100, height: (k.crop_height / srcH) * 100 } : null;
 
@@ -81,6 +89,7 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
     <div className="flex flex-wrap items-start gap-5">
       <div className="relative shrink-0 overflow-hidden rounded-[6px] bg-black" style={{ width: W, height: H }}>
         {mediaUrl ? (
+          <div className="absolute left-0 w-full overflow-hidden" style={win}>
           <video
             ref={portrait}
             src={mediaUrl}
@@ -98,6 +107,7 @@ function Preview({ h, mediaUrl, srcW, srcH, onOverride }: { h: Highlight; mediaU
               drawFrame();
             }}
           />
+          </div>
         ) : (
           <p className="p-4 text-[13px] text-muted">Preview needs the processing backend online.</p>
         )}
@@ -259,6 +269,7 @@ export function Highlights({ recordingId, projectId, srcW, srcH, canEdit, words 
                   </button>
                 </div>
               )}
+              <Renders highlightId={current.id} projectId={projectId} selected={current.status === "selected"} canEdit={canEdit} />
             </div>
           )}
         </div>

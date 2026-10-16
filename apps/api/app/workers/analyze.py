@@ -6,7 +6,7 @@ import logging
 import time
 from pathlib import Path
 
-from app.core.db import service_client
+from app.core.db import service_client, transcript_words
 from app.core.storage import recording_dir, source_path
 from app.services.highlights import audio_features, candidates, llm
 from app.services.screen_analysis import activity, ocr, reframe
@@ -26,24 +26,6 @@ def _cached(path: Path, build):
     data = build()
     path.write_text(json.dumps(data))
     return data
-
-
-def _words(db, transcript_id: str) -> list[dict]:
-    out = []
-    for start in range(0, 200_000, 1000):
-        page = (
-            db.table("transcript_words")
-            .select("*")
-            .eq("transcript_id", transcript_id)
-            .order("idx")
-            .range(start, start + 999)
-            .execute()
-            .data
-        )
-        out += page
-        if len(page) < 1000:
-            return out
-    return out
 
 
 def run_analyze(ctx: JobContext) -> dict:
@@ -94,7 +76,7 @@ def run_analyze(ctx: JobContext) -> dict:
     timings["ocr_s"] = round(time.perf_counter() - t0, 1)
 
     ctx.stage("screen_terms", 0.45, "Correcting terms that are visible on screen")
-    words = _words(db, tr["id"])
+    words = transcript_words(tr["id"])
     fixed = glossary.correct_with_screen(words, seen)
     changed = [
         w

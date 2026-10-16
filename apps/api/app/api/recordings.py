@@ -4,16 +4,13 @@ Flow: POST /recordings → PUT /recordings/{id}/chunk?offset=N (repeat) → POST
 GET /recordings/{id} reports received bytes, so a client resumes from where the disk says it stopped.
 """
 
-import hashlib
-import hmac
-import secrets
-import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.core import signing
 from app.core.access import get_owned
 from app.core.auth import User, current_user
 from app.core.db import service_client
@@ -21,11 +18,7 @@ from app.core.storage import source_path
 from app.services import media
 
 router = APIRouter(prefix="/recordings")
-CHUNK_MAX = 16 * 1024 * 1024  # stays well under free tunnel request-body limits
-_MEDIA_KEY = secrets.token_bytes(
-    32
-)  # ponytail: per-process key; restart invalidates links, client re-requests
-MEDIA_TTL_S = 6 * 3600
+CHUNK_MAX = 8 * 1024 * 1024  # half of Dev Tunnels' 16 MB request-body cap
 
 
 class CreateRecording(BaseModel):
@@ -216,21 +209,17 @@ def reanalyze(rec_id: str, user: User = Depends(current_user)) -> dict:
     return {"job_id": job["id"]}
 
 
-def _sign(rec_id: str, exp: int) -> str:
-    return hmac.new(_MEDIA_KEY, f"{rec_id}:{exp}".encode(), hashlib.sha256).hexdigest()
-
-
 @router.get("/{rec_id}/media-url")
 def media_url(rec_id: str, request: Request, user: User = Depends(current_user)) -> dict:
     rec = get_owned("source_recordings", rec_id, user)
-    exp = int(time.time()) + MEDIA_TTL_S
-    return {"path": f"/recordings/{rec['id']}/media?exp={exp}&sig={_sign(rec['id'], exp)}", "expires_at": exp}
+    q, exp = signing.query("recording", rec["id"])
+    return {"path": f"/recordings/{rec['id']}/media?{q}", "expires_at": exp}
 
 
 @router.get("/{rec_id}/media")
 def media_file(rec_id: str, exp: int, sig: str) -> FileResponse:
     """<video> cannot send an Authorization header, so playback uses a short-lived HMAC-signed URL."""
-    if exp < time.time() or not hmac.compare_digest(sig, _sign(rec_id, exp)):
+    if not signing.valid("recording", rec_id, exp, sig):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Link expired or invalid")
     rows = service_client().table("source_recordings").select("*").eq("id", rec_id).limit(1).execute().data
     if not rows or rows[0]["status"] == "uploading":

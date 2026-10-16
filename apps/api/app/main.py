@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, recordings
+from app.api import health, recordings, renders
 from app.core import heartbeat
 from app.core.config import get_settings
 
@@ -27,8 +27,15 @@ app.add_middleware(
     allow_origins=get_settings().origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "Content-Range", "Upload-Offset"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Content-Range",
+        "Upload-Offset",
+        "X-Tunnel-Skip-AntiPhishing-Page",
+    ],
 )
 
 app.include_router(health.router)
 app.include_router(recordings.router)
+app.include_router(renders.router)
