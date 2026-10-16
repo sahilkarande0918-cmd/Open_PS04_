@@ -83,3 +83,6 @@ Update `docs/CURRENT_TASK.md`, `docs/HANDOFF.md`, `docs/PHASES.md`, `docs/TEST_S
 ## Engineering skills
 - Ponytail (installed, active): simplest verified solution; run `/ponytail-review` at milestones, `/ponytail-audit` in Phase 09. Simplification never removes required PS features.
 - Taste Skill for initial design direction; Hallmark for targeted audits. Don't redesign finished screens repeatedly.
+
+## Codex takeover handback
+A time-limited execution overlay lives in `docs/CODEX_HANDOFF.md` (added 2026-10-17). Read it when resuming after Codex, reconcile changes with Git history, and preserve the original PS, master prompt, cost rule and core security. It reprioritizes Mode B, UI, editor, publishing and analytics ahead of stretch SaaS features; it does not undo verified phases or the mandatory reading order above.
