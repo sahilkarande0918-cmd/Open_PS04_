@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/lib/backend";
+import { apiErrorMessage, apiFetch } from "@/lib/backend";
 
 export type Platform = "instagram" | "youtube";
 export type SocialAccount = {
@@ -55,7 +55,7 @@ export async function socialRequest<T>(base: string, path: string, body?: unknow
   });
   const result = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(typeof result?.detail === "string" ? result.detail : `The request failed (${response.status}). Please try again.`);
+    throw new Error(apiErrorMessage(result, response.status));
   }
   if (result === null) throw new Error("The processing backend returned an invalid response.");
   return result as T;

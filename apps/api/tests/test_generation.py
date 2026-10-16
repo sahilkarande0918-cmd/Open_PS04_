@@ -49,19 +49,23 @@ def test_python_is_parsed_never_executed(tmp_path):
     assert not marker.exists()
 
 
-def test_ollama_invalid_output_is_repaired_before_return(monkeypatch):
+@pytest.mark.parametrize("fenced", [False, pytest.param(True, marks=pytest.mark.xfail(
+    strict=True, reason="Known live Mode B failure: model wraps JSON in markdown fences; repair pending"
+))])
+def test_ollama_invalid_output_is_repaired_before_return(monkeypatch, fenced):
     from app.services.generation import TopicRequest, generate_storyboard
 
-    replies = ["{}", json.dumps(storyboard_data())]
+    valid = json.dumps(storyboard_data())
+    replies = ["{}", f"```json\n{valid}\n```" if fenced else valid]
     def post(url, **kwargs):
         assert url.endswith('/api/chat')
         assert kwargs['json']['format']['type'] == 'object'
         return httpx.Response(200, request=httpx.Request('POST', url),
-                              json={"message": {"content": replies.pop(0)}})
+                              json={"message": {"content": replies.pop(0) if len(replies) > 1 else replies[0]}})
     monkeypatch.setattr(httpx, 'post', post)
     board = generate_storyboard(TopicRequest(topic="JSON vs XML"))
     assert board.scenes[1].code == '<name>Ada</name>'
-    assert not replies
+    assert len(replies) == 1
 
 
 def test_alignment_corrects_spelling_without_inventing_timing():

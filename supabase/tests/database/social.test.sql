@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(17);
 insert into auth.users(id,email) values
  ('33333333-3333-3333-3333-333333333333','social-owner@test.local'),
  ('44444444-4444-4444-4444-444444444444','social-outsider@test.local');
@@ -47,5 +47,25 @@ select is((select count(*)::int from public.consume_oauth_state('state-test',
 select is((select count(*)::int from public.consume_oauth_state('state-test',
  '33333333-3333-3333-3333-333333333333','instagram')),0,'state cannot be replayed');
 reset role;
+insert into public.render_jobs(id,organization_id,project_id,created_by,status,timeline,timeline_hash)
+ values('33333333-3333-3333-3333-333333333339','33333333-3333-3333-3333-333333333330',
+ '33333333-3333-3333-3333-333333333331','33333333-3333-3333-3333-333333333333','ready','{}','test');
+select public.enqueue_publication('33333333-3333-3333-3333-333333333339',
+ '33333333-3333-3333-3333-333333333332','33333333-3333-3333-3333-333333333333','test',now()+interval '1 day');
+select public.enqueue_publication('33333333-3333-3333-3333-333333333339',
+ '33333333-3333-3333-3333-333333333332','33333333-3333-3333-3333-333333333333','test',now()+interval '1 day');
+select is((select count(*)::int from public.publish_jobs),1,'duplicate publication reuses queue row');
+select ok((select (public.change_publication(id,'cancel','44444444-4444-4444-4444-444444444444')).id
+ from public.publish_jobs) is null,'outsider cannot cancel publication');
+select is((select (public.change_publication(id,'cancel','33333333-3333-3333-3333-333333333333')).status
+ from public.publish_jobs),'cancelled','queued publication can be cancelled');
+select public.enqueue_publication('33333333-3333-3333-3333-333333333339',
+ '33333333-3333-3333-3333-333333333332','33333333-3333-3333-3333-333333333333','test',now()+interval '1 day');
+update public.publish_jobs set status='publishing' where status='scheduled';
+update public.jobs set status='failed' where id in (select job_id from public.publish_jobs where status='publishing');
+select is((select status from public.publish_jobs where status<>'cancelled'),'needs_review',
+ 'ambiguous publish failure requires review');
+select ok((select (public.change_publication(id,'retry','33333333-3333-3333-3333-333333333333')).id
+ from public.publish_jobs where status='needs_review') is null,'ambiguous publication cannot be retried');
 select * from finish();
 rollback;

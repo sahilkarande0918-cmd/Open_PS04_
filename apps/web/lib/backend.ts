@@ -58,3 +58,5 @@ export async function apiFetch(base: string, path: string, init: RequestInit = {
   headers.set("X-Tunnel-Skip-AntiPhishing-Page", "true");
   return fetch(`${base.replace(/\/$/, "")}${path}`, { ...init, headers });
 }
+
+export { apiErrorMessage } from "./api-error";

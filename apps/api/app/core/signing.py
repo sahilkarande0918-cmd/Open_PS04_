@@ -6,7 +6,20 @@ import hmac
 import secrets
 import time
 
-_KEY = secrets.token_bytes(32)  # ponytail: per-process key; restart invalidates links, client re-requests
+from app.core.config import get_settings
+
+def _shared_key() -> bytes:
+    settings = get_settings()
+    secret = settings.token_encryption_key or settings.supabase_secret_key
+    # API and worker must verify each other's URLs. Domain separation keeps this key
+    # distinct from OAuth encryption and database authentication keys.
+    return (
+        hmac.new(secret.encode(), b"reel-studio:media-signing:v1", hashlib.sha256).digest()
+        if secret else secrets.token_bytes(32)
+    )
+
+
+_KEY = _shared_key()
 TTL_S = 6 * 3600
 
 

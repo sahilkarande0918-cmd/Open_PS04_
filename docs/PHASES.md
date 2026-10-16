@@ -1,3 +1,4 @@
+> **Final checkpoint (2026-10-17):** Read [CODEX_TO_CLAUDE_HANDOFF.md](CODEX_TO_CLAUDE_HANDOFF.md) first. It supersedes historical status below. Mode B pipeline/UI implemented but live generation fails on fenced model JSON; full editor and YouTube unfinished. Instagram reaches Reel Studio-IG but awaits the separate Business-account login/consent. Never connect/convert the personal account or publish without explicit approval. Production deployed at 7419b77; two new migrations applied. Final backend: 76 pass, 6 skip, 1 known xfail; DB: 52 pass; final frontend build passes. Owner requested checkpoint only, no more features.
 # Phases
 
 **Current phase:** **Phase 04 — captions, branding, Hyperframes MP4 rendering** (first task verified: selected highlight → captioned 1080×1920 MP4). Phases 02–03 verified on synthetic fixtures only. Phase 01 production: tunnel ✅ (Dev Tunnels); remote migrations still pending an owner `db push`.

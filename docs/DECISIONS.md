@@ -130,3 +130,12 @@ Frame capture dominates, so the defaults stay (portable to machines without NVEN
 
 ## D-031 — Caption layout: balanced pages, two positions, server-computed preview
 Phrases end at sentence ends and pauses over 0.7 s. Each phrase goes on the fewest pages of at most 2 lines × 26 characters, with pages and lines split evenly, so no page holds a lone word. Brand kits choose the lower third (y 1350–1650) or top (y 260–560); code panels move to the opposite half. The studio preview asks the API for the exact pages, zone and panel position (`GET /highlights/{id}/preview`, same builder and paginator as the renderer), so preview and export cannot drift.
+
+## D-032 — Local Mode B and additive canonical tracks
+Topic generation is a durable worker job with immutable cached storyboard/narration, syntax-only example validation and measured word timestamps. Audio/code/text extend the existing schema/compiler; no alternate timeline. Live model JSON fences remain a documented blocker, not a canned-success fallback.
+
+## D-033 — Instagram Login and durable publication identity
+Use official Instagram Login for professional accounts, backend-only encrypted tokens (AES-GCM with account-bound AAD), single-use org/user-bound OAuth state, and durable render/account publication identity. Persist container and publish transition before the irreversible call. Unknown outcomes require review and cannot auto-retry. No linked Facebook Page is required for this selected flow. Real test posts require owner approval. Current browser personal account is never the target.
+
+## D-034 — Shared signed media URLs across processes
+Publishing worker and API cannot use unrelated random signing keys. Derive a domain-separated HMAC key from backend secret configuration; six-hour expiry and kind/resource binding remain. Rotation invalidates links. Unit checks pass; restart API and worker together before live ingestion. This narrowly necessary fix supersedes the original per-process-signing choice.

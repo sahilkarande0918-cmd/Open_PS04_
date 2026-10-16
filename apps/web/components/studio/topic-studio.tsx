@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Code2, Download, Film, LoaderCircle, Mic, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { apiFetch, useBackend } from "@/lib/backend";
+import { apiErrorMessage, apiFetch, useBackend } from "@/lib/backend";
 import { useProjectJobs } from "@/lib/realtime";
 import { createClient } from "@/lib/supabase/client";
 
@@ -12,8 +12,9 @@ type Generation = { id: string; status: string; topic: string; storyboard: { tit
 const STAGES: Record<string, string> = { queued: "Waiting for the processing machine", storyboard: "Writing the script and storyboard", script: "Writing your script", validate_code: "Checking the code examples", tts: "Recording the narration locally", narration: "Recording the narration locally", align: "Synchronizing captions", timeline: "Building the video timeline", render: "Rendering your video", done: "Generation complete" };
 
 async function responseJson(r: Response) {
-  const body = await r.json();
-  if (!r.ok) throw new Error(typeof body.detail === "string" ? body.detail : `Request failed (${r.status}). Check the generation settings and try again.`);
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(apiErrorMessage(body, r.status));
+  if (body === null) throw new Error("The processing backend returned an invalid response.");
   return body;
 }
 
@@ -109,7 +110,7 @@ function TopicExport({ renderId, base }: { renderId: string; base: string | null
   const urls = useQuery<{ video: string; thumb: string; download: string }>({ queryKey: ["render-urls", renderId, base], enabled: !!base && render.data?.status === "ready", staleTime: 60 * 60 * 1000,
     queryFn: async () => {
       const data = await responseJson(await apiFetch(base!, `/renders/${renderId}/urls`));
-      return { video: `${base}${data.video}`, thumb: `${base}${data.thumb}`, download: `${base}${data.download}` };
+      return { video: `${base!.replace(/\/$/, "")}${data.video}`, thumb: `${base!.replace(/\/$/, "")}${data.thumb}`, download: `${base!.replace(/\/$/, "")}${data.download}` };
     },
   });
   async function download(format: "mp4" | "srt" | "vtt") {

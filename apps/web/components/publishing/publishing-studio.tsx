@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, Clock3, ExternalLink, Film, LoaderCircle, RefreshCw, Send, X } from "lucide-react";
 import { useState } from "react";
 import { useBackend } from "@/lib/backend";
-import { accountReady, platformName, socialRequest, type PublishExport, type PublishJob, type SocialAccount } from "@/lib/social";
+import { accountReady, platformName, socialRequest, type PublishExport, type PublishJob, type SocialAccount, type SocialConfig } from "@/lib/social";
 import { AccountConnections } from "./account-connections";
 
 const ACTIVE = ["queued", "scheduled", "processing", "publishing"];
@@ -41,9 +41,10 @@ export function PublishingStudio({ organizationId, canEdit }: { organizationId: 
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const accounts = useQuery({ queryKey: ["social-accounts", organizationId, base], enabled: !!base, queryFn: () => socialRequest<SocialAccount[]>(base!, `/social/accounts?organization_id=${encodeURIComponent(organizationId)}`) });
+  const config = useQuery({ queryKey: ["social-config", base], enabled: !!base, queryFn: () => socialRequest<SocialConfig>(base!, "/social/config"), staleTime: 30_000 });
   const exports = useQuery({ queryKey: ["publish-exports", organizationId, base], enabled: !!base, queryFn: () => socialRequest<PublishExport[]>(base!, `/publishing/exports?organization_id=${encodeURIComponent(organizationId)}`) });
   const queue = useQuery({ queryKey: ["publishing", organizationId, base], enabled: !!base, queryFn: () => socialRequest<PublishJob[]>(base!, `/publishing?organization_id=${encodeURIComponent(organizationId)}`), refetchInterval: 5000 });
-  const readyAccounts = accounts.data?.filter(accountReady) ?? [];
+  const readyAccounts = accounts.data?.filter((a) => accountReady(a) && config.data?.[a.platform]?.configured) ?? [];
   const account = readyAccounts.find((a) => a.id === accountId);
   const selected = exports.data?.find((r) => r.id === renderId);
   const existing = queue.data?.find((j) => j.render_id === renderId && j.account_id === accountId && j.status !== "cancelled");
