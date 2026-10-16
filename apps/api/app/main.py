@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import health, recordings
 from app.core import heartbeat
 from app.core.config import get_settings
 
@@ -12,7 +12,9 @@ from app.core.config import get_settings
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     s = get_settings()
-    task = asyncio.create_task(heartbeat.run_forever()) if s.public_api_url and s.supabase_configured else None
+    task = (
+        asyncio.create_task(heartbeat.run_forever()) if s.public_api_url and s.supabase_configured else None
+    )
     yield
     if task:
         task.cancel()
@@ -29,3 +31,4 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(recordings.router)

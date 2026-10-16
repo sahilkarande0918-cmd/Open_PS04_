@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireOrg } from "@/lib/supabase/server";
 import { NewProjectForm } from "./new-project-form";
 
@@ -31,7 +32,7 @@ export default async function ProjectsPage() {
           <tbody>
             {projects.map((p) => (
               <tr key={p.id} className="border-t border-line">
-                <td className="py-2.5">{p.name}</td>
+                <td className="py-2.5"><Link href={`/projects/${p.id}`} className="hover:text-accent">{p.name}</Link></td>
                 <td className="text-muted">{MODE[p.mode as keyof typeof MODE]}</td>
                 <td className="text-muted">{p.status}</td>
                 <td className="text-right tabular-nums text-muted">{new Date(p.updated_at).toLocaleDateString()}</td>

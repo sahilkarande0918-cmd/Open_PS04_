@@ -48,7 +48,7 @@ export default async function DashboardPage() {
           <ul className="divide-y divide-line">
             {projects.data!.map((p) => (
               <li key={p.id} className="flex justify-between py-2.5 text-[14px]">
-                <span>{p.name}</span>
+                <Link href={`/projects/${p.id}`} className="hover:text-accent">{p.name}</Link>
                 <span className="text-muted">{p.mode === "recording" ? "Recording → Reels" : "Topic → Video"}</span>
               </li>
             ))}

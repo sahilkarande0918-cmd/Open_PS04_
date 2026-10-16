@@ -1,0 +1,4 @@
+-r base.txt
+faster-whisper==1.2.*
+nvidia-cublas-cu12==12.*
+nvidia-cudnn-cu12==9.*

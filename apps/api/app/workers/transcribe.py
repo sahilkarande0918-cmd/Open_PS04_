@@ -1,0 +1,101 @@
+"""transcribe job: extract audio → faster-whisper → glossary correction → persist."""
+
+import time
+
+from app.core.db import service_client
+from app.core.storage import recording_dir, source_path
+from app.services import media
+from app.services.transcription import glossary, whisper
+from app.workers.jobs import JobContext, Permanent
+
+BATCH = 500
+
+
+def run_transcribe(ctx: JobContext) -> dict:
+    db = service_client()
+    rec_id = ctx.payload.get("recording_id")
+    rows = db.table("source_recordings").select("*").eq("id", rec_id).limit(1).execute().data
+    if not rows:
+        raise Permanent("recording not found")
+    rec = rows[0]
+    src = source_path(rec)
+    if not src.exists():
+        raise Permanent("source file missing on the processing machine")
+    db.table("source_recordings").update({"status": "processing", "error": None}).eq("id", rec_id).execute()
+    try:
+        return _run(ctx, db, rec, src)
+    except Exception as e:
+        db.table("source_recordings").update({"status": "failed", "error": str(e)[:500]}).eq(
+            "id", rec_id
+        ).execute()
+        raise
+
+
+def _run(ctx: JobContext, db, rec: dict, src) -> dict:
+    audio = recording_dir(rec["organization_id"], rec["id"]) / "audio16k.wav"
+    ctx.stage("extract_audio", 0.02, "Extracting and normalising audio")
+    if not audio.exists():  # cached across retries
+        try:
+            media.extract_audio(src, audio)
+        except media.MediaError as e:
+            raise Permanent(str(e)) from e
+
+    org_terms = (
+        db.table("technical_glossaries")
+        .select("term, aliases")
+        .eq("organization_id", rec["organization_id"])
+        .execute()
+        .data
+    )
+    gl = glossary.Glossary.build(org_terms)
+
+    ctx.stage("transcribe", 0.08, "Transcribing speech on the local GPU")
+    t0 = time.perf_counter()
+    result = whisper.transcribe(
+        audio, hotwords=gl.hotwords(), on_progress=lambda p: ctx.progress(0.08 + 0.8 * p)
+    )
+    elapsed = time.perf_counter() - t0
+    ctx.check_cancel()
+
+    ctx.stage("correct_terms", 0.9, "Correcting technical vocabulary")
+    words = glossary.correct(result.words, gl)
+
+    ctx.stage("save", 0.94, "Saving transcript")
+    tr = (
+        db.table("transcripts")
+        .insert(
+            {
+                "organization_id": rec["organization_id"],
+                "recording_id": rec["id"],
+                "model": f"faster-whisper:{result.model}@{result.device}",
+                "language": result.language,
+                "language_probability": result.language_probability,
+                "duration_s": result.duration_s,
+                "processing_s": round(elapsed, 2),
+                "word_timing": "whisper-dtw",
+            }
+        )
+        .execute()
+        .data[0]
+    )
+    for seg in result.segments:
+        seg["transcript_id"] = tr["id"]
+    for w in words:
+        w["transcript_id"] = tr["id"]
+    for i in range(0, len(result.segments), BATCH):
+        db.table("transcript_segments").insert(result.segments[i : i + BATCH]).execute()
+    for i in range(0, len(words), BATCH):
+        db.table("transcript_words").insert(words[i : i + BATCH]).execute()
+    db.table("source_recordings").update({"status": "ready"}).eq("id", rec["id"]).execute()
+    db.table("projects").update({"status": "transcribed"}).eq("id", rec["project_id"]).execute()
+    corrected = sum(1 for w in words if "correction" in w["metadata"])
+    return {
+        "transcript_id": tr["id"],
+        "words": len(words),
+        "segments": len(result.segments),
+        "corrections": corrected,
+        "processing_s": round(elapsed, 2),
+        "realtime_factor": round(result.duration_s / elapsed, 2) if elapsed else None,
+        "language": result.language,
+        "device": result.device,
+    }
