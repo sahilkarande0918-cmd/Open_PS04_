@@ -57,3 +57,9 @@ def test_symbol_terms_never_fuzzy_match_plain_words():
     out = correct(words("when the component unmounts"), G)
     assert shown(out) == "when the component unmounts"
     assert shown(correct(words("at the rate component lagao"), G)) == "@Component lagao"
+
+
+def test_correct_spoken_forms_only_not_mishearings():
+    assert shown(correct(words("ek naya abort controller banao"), G)) == "ek naya AbortController banao"
+    # "about controller" is an ASR mishearing; fixing it needs on-screen evidence (Phase 03), not a guess
+    assert shown(correct(words("ek naya about controller banao"), G)) == "ek naya about controller banao"

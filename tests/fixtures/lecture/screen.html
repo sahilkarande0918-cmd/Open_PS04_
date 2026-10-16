@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Synthetic screen recording</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      body { margin: 0; background: #1e1e1e; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #1e1e1e;
+        font-family: "Segoe UI", system-ui, sans-serif; color: #cccccc; }
+      .mono { font-family: Consolas, "Courier New", monospace; }
+      #titlebar { position: absolute; left: 0; top: 0; right: 0; height: 32px; background: #3c3c3c; color: #cccccc;
+        font-size: 13px; display: flex; align-items: center; justify-content: center; }
+      #activity { position: absolute; left: 0; top: 32px; bottom: 24px; width: 52px; background: #333333; }
+      #sidebar { position: absolute; left: 52px; top: 32px; bottom: 24px; width: 250px; background: #252526; font-size: 14px; }
+      #sidebar .head { padding: 10px 18px; font-size: 11px; letter-spacing: 1px; color: #bbbbbb; }
+      #sidebar .f { padding: 4px 18px 4px 34px; }
+      #sidebar .f.on { background: #37373d; color: #ffffff; }
+      #tabs { position: absolute; left: 302px; right: 0; top: 32px; height: 38px; background: #252526; display: flex; font-size: 14px; }
+      #tabs .t { padding: 10px 18px; color: #969696; border-right: 1px solid #1e1e1e; }
+      #tabs .t.on { background: #1e1e1e; color: #ffffff; }
+      #editor { position: absolute; left: 302px; right: 0; top: 70px; bottom: 24px; overflow: hidden; }
+      #code { position: absolute; left: 0; right: 0; top: 0; }
+      .ln { height: 30px; line-height: 30px; font-size: 20px; white-space: pre; display: flex; }
+      .ln .n { width: 70px; flex: none; text-align: right; padding-right: 24px; color: #858585; }
+      .ln.cur { background: #282828; }
+      .ln.sel { background: #264f78; }
+      .caret { display: inline-block; width: 2px; height: 24px; background: #aeafad; vertical-align: -5px; }
+      #panel { position: absolute; left: 302px; right: 0; bottom: 24px; height: 0; background: #1e1e1e;
+        border-top: 1px solid #414141; overflow: hidden; }
+      #panel .bar { height: 34px; line-height: 34px; padding: 0 18px; font-size: 12px; color: #e7e7e7; letter-spacing: 1px; }
+      #term { padding: 6px 18px; font-size: 19px; line-height: 28px; color: #cccccc; white-space: pre; }
+      #status { position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: #007acc; color: #ffffff;
+        font-size: 13px; line-height: 24px; padding-left: 14px; }
+      #browser { position: absolute; left: 860px; top: 120px; width: 1000px; height: 760px; background: #ffffff;
+        border-radius: 8px; overflow: hidden; display: none; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55); color: #202124; }
+      #browser .chrome { height: 74px; background: #dee1e6; }
+      #browser .url { position: absolute; left: 20px; right: 20px; top: 38px; height: 28px; border-radius: 14px;
+        background: #ffffff; font-size: 15px; line-height: 28px; padding-left: 16px; color: #3c4043; }
+      #browser .page { padding: 34px 44px; font-size: 26px; }
+      #browser .page li { margin: 10px 0; }
+      #pointer { position: absolute; width: 26px; height: 38px; left: 0; top: 0; }
+      .k { color: #c586c0; } .s { color: #ce9178; } .fn { color: #dcdcaa; } .c { color: #6a9955; }
+      .tg { color: #569cd6; } .num { color: #b5cea8; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="__DURATION__">
+      <audio id="narration" src="narration.wav" data-start="0" data-duration="__DURATION__"></audio>
+      <div id="titlebar">users-app — Visual Studio Code</div>
+      <div id="activity"></div>
+      <div id="sidebar"><div class="head">EXPLORER</div><div id="files"></div></div>
+      <div id="tabs"></div>
+      <div id="editor"><div id="code" class="mono"></div></div>
+      <div id="panel"><div class="bar">TERMINAL</div><div id="term" class="mono"></div></div>
+      <div id="status">main  ⓧ 0  ⚠ 0     Ln 1, Col 1     Spaces: 2     UTF-8     JavaScript</div>
+      <div id="browser"><div class="chrome"></div><div class="url" id="url">localhost:5173</div><div class="page" id="page"></div></div>
+      <svg id="pointer" viewBox="0 0 26 38"><path d="M2 2 L2 30 L9 23 L14 35 L19 33 L14 21 L24 21 Z" fill="#ffffff" stroke="#000000" stroke-width="2" /></svg>
+    </div>
+    <script>
+      const FILES = __FILES__;
+      const EVENTS = __EVENTS__;
+      const BROWSER = __BROWSER__;
+      const LINE_H = 30, CHAR_W = 11, GUTTER = 70, EDITOR_X = 302, EDITOR_Y = 70, VISIBLE = 30;
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const lerp = (a, b, p) => a + (b - a) * p;
+      const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+
+      function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+      function hl(line, file) {
+        if (file.endsWith(".yaml")) return esc(line).replace(/^(\s*)([\w.]+):/, '$1<span class="tg">$2</span>:');
+        if (file === "Dockerfile") return esc(line).replace(/^(FROM|WORKDIR|COPY|RUN|CMD)/, '<span class="k">$1</span>');
+        return esc(line)
+          .replace(/(&quot;|"[^"]*")/g, '<span class="s">$1</span>')
+          .replace(/\b(import|from|export|function|const|return|new|default|if|null)\b/g, '<span class="k">$1</span>')
+          .replace(/\b(useEffect|useState|useFetch|fetch|setData|setError|AbortController|abort|json|then|catch|map|require|express|listen|get|post)\b/g, '<span class="fn">$1</span>')
+          .replace(/(\/\/.*)$/, '<span class="c">$1</span>');
+      }
+
+      // Replay every event up to time t. Deterministic: the frame at t depends only on t.
+      function stateAt(t) {
+        const files = JSON.parse(JSON.stringify(FILES));
+        const st = { file: Object.keys(FILES)[0], panel: "editor", term: [], scroll: {}, sel: null,
+          caret: null, pointer: { x: 1200, y: 600 }, open: [Object.keys(FILES)[0]] };
+        let px = st.pointer.x, py = st.pointer.y;
+        for (const e of EVENTS) {
+          if (e.t0 > t) break;
+          const p = e.t1 > e.t0 ? clamp((t - e.t0) / (e.t1 - e.t0), 0, 1) : 1;
+          const L = files[e.file];
+          if (e.op === "show") { st.file = e.file; if (!st.open.includes(e.file)) st.open.push(e.file); st.sel = null; }
+          else if (e.op === "type") {
+            L.splice(e.line, 0, e.text.slice(0, Math.round(e.text.length * p)));
+            st.file = e.file; st.caret = { line: e.line, col: L[e.line].length }; st.sel = null;
+          } else if (e.op === "edit") {
+            const old = L[e.line]; let k = 0;
+            while (k < old.length && k < e.text.length && old[k] === e.text[k]) k++;
+            const del = old.length - k, add = e.text.length - k, steps = del + add;
+            const n = Math.round(steps * p);
+            L[e.line] = n <= del ? old.slice(0, old.length - n) : e.text.slice(0, k + (n - del));
+            st.caret = { line: e.line, col: L[e.line].length }; st.sel = null;
+          } else if (e.op === "scroll") {
+            const from = st.scroll[e.file] || 0; st.scroll[e.file] = lerp(from, e.to, ease(p));
+          } else if (e.op === "select") { st.sel = { file: e.file, a: e.a, b: e.b }; }
+          else if (e.op === "point") {
+            const top = st.scroll[e.file] || 0, len = (L[e.line] || "").length;
+            const tx = EDITOR_X + GUTTER + Math.min(len, 40) * CHAR_W * 0.6, ty = EDITOR_Y + (e.line - top) * LINE_H + 18;
+            st.pointer = { x: lerp(px, tx, ease(p)), y: lerp(py, ty, ease(p)) };
+            if (p >= 1) { px = tx; py = ty; }
+          } else if (e.op === "panel") {
+            st.panel = e.panel;
+            const tx = e.panel === "browser" ? 1300 : e.panel === "terminal" ? 700 : 900;
+            const ty = e.panel === "browser" ? 380 : e.panel === "terminal" ? 940 : 400;
+            st.pointer = { x: lerp(px, tx, ease(p)), y: lerp(py, ty, ease(p)) };
+            if (p >= 1) { px = tx; py = ty; }
+          } else if (e.op === "term") {
+            st.term = st.term.slice(0, e.index).concat([e.text.slice(0, Math.round(e.text.length * p))]);
+          }
+        }
+        // keep the caret line visible
+        if (st.caret && st.file) {
+          const top = st.scroll[st.file] || 0, lim = st.panel === "terminal" ? VISIBLE - 10 : VISIBLE - 2;
+          if (st.caret.line - top > lim) st.scroll[st.file] = st.caret.line - lim;
+        }
+        st.files = files;
+        return st;
+      }
+
+      function render(t) {
+        const st = stateAt(t);
+        const L = st.files[st.file];
+        document.getElementById("files").innerHTML = Object.keys(FILES)
+          .map((f) => `<div class="f${f === st.file ? " on" : ""}">${f}</div>`).join("");
+        document.getElementById("tabs").innerHTML = st.open
+          .map((f) => `<div class="t${f === st.file ? " on" : ""}">${f}</div>`).join("");
+        const blink = Math.floor(t * 2) % 2 === 0;
+        document.getElementById("code").innerHTML = L.map((line, i) => {
+          const sel = st.sel && st.sel.file === st.file && i >= st.sel.a && i <= st.sel.b;
+          const cur = st.caret && st.caret.line === i;
+          const caret = cur && blink ? '<span class="caret"></span>' : "";
+          return `<div class="ln${sel ? " sel" : cur ? " cur" : ""}"><span class="n">${i + 1}</span><span>${hl(line, st.file)}${caret}</span></div>`;
+        }).join("");
+        document.getElementById("code").style.transform = `translateY(${-(st.scroll[st.file] || 0) * LINE_H}px)`;
+        const panelOpen = st.panel === "terminal" || st.term.length > 0;
+        document.getElementById("panel").style.height = panelOpen ? (st.panel === "terminal" ? "320px" : "180px") : "0px";
+        document.getElementById("term").textContent = st.term.join("\n");
+        document.getElementById("browser").style.display = st.panel === "browser" ? "block" : "none";
+        document.getElementById("url").textContent = BROWSER.url;
+        document.getElementById("page").innerHTML = BROWSER.html;
+        const p = document.getElementById("pointer");
+        p.style.left = st.pointer.x + "px";
+        p.style.top = st.pointer.y + "px";
+        const ln = st.caret ? st.caret.line + 1 : 1, col = st.caret ? st.caret.col + 1 : 1;
+        document.getElementById("status").textContent = `main  ⓧ 0  ⚠ 0     Ln ${ln}, Col ${col}     Spaces: 2     UTF-8`;
+      }
+
+      const clock = { t: 0 };
+      const tl = gsap.timeline({ paused: true });
+      tl.to(clock, { t: __DURATION__, duration: __DURATION__, ease: "none", onUpdate: () => render(clock.t) }, 0);
+      render(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

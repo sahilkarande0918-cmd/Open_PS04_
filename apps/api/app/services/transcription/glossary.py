@@ -20,6 +20,9 @@ BUILTIN: dict[str, list[str]] = {
     "useCallback": ["use callback", "use call back", "usecallback"],
     "useContext": ["use context", "usecontext"],
     "setState": ["set state"],
+    "AbortController": ["abort controller", "abortcontroller"],
+    "AbortError": ["abort error", "aborterror"],
+    "fetch": ["fetch"],
     "@Autowired": [
         "at the rate autowired",
         "at the rate auto wired",

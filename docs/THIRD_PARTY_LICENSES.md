@@ -56,3 +56,16 @@ Decision: custom React timeline (D-011/Phase 06), built on permissive primitives
 
 ## Notices
 Hyperframes (Apache-2.0) requires preserving its LICENSE/NOTICE if we redistribute its code. We consume it as an npm dependency; attribution is listed in README.
+
+## Added in Phase 02
+| Project | Licence | Use |
+|---------|---------|-----|
+| Oriserve/Whisper-Hindi2Hinglish-Apex (weights) | Apache-2.0 | ASR model, converted locally to CTranslate2 |
+| CTranslate2 / faster-whisper | MIT | ASR runtime |
+| nvidia-cublas-cu12, nvidia-cudnn-cu12 (pip wheels) | NVIDIA proprietary redistributable (free) | CUDA runtime libraries for local GPU inference; not redistributed by us |
+| opencv-python-headless | Apache-2.0 (OpenCV), MIT wrapper | Screen activity analysis |
+| scenedetect (PySceneDetect) | BSD-3-Clause | Scene cuts (Phase 03) |
+| kokoro-onnx | MIT | Local Kokoro TTS runtime used by `hyperframes tts` |
+| Windows OneCore voices (Microsoft Ravi/Heera, en-IN) | bundled with Windows | Test-fixture narration only; not shipped |
+
+Test audio: Oriserve model-repo sample clips (Common Voice, CC0) used for local spot checks; not committed.
